@@ -13,13 +13,20 @@ into maintainer velocity.
 The core idea:
 
 > Present **groups of PRs with the same suggested action**
-> together. The maintainer bulk-confirms the group, pulls
-> individual PRs out for closer inspection, or skips the group.
+> together, where each group **spans the entire queue** (every
+> page already fetched in Step 1). The maintainer bulk-confirms
+> the group, pulls individual PRs out for closer inspection, or
+> skips the group.
 
 The underlying `breeze pr auto-triage` tool presented PRs one-
 at-a-time (sequential mode) or as a TUI list with per-PR keys.
 This skill lands between those: sequential per-group, with a
-drill-in for the PRs the maintainer wants to eyeball.
+drill-in for the PRs the maintainer wants to eyeball — except
+that each group is **the entire set** of PRs with a given
+`(classification, action)` across the queue, not a per-page
+slice. A 200-PR full-sweep with 30 passing PRs presents the
+maintainer with one `mark-ready` group of 30, not six pages of
+five.
 
 ---
 
@@ -90,26 +97,36 @@ For each group, present one screen of information. The goal is
 a decision in under 15 seconds when the suggestion looks right,
 or a natural path to per-PR inspection when it doesn't.
 
+Groups can be **large** — a full-queue `mark-ready` group on
+an active project might carry 20–40 PRs. Render every PR in
+the group (one line per PR) so the maintainer can scan for
+outliers; do not silently truncate. If the group exceeds a
+terminal-friendly threshold (say, 60 PRs), insert a short
+"… N more PRs in this group, showing first 60 …" line at the
+bottom of the visible block and require `[E]` to walk past it
+(no surprise hidden state behind `[A]ll`).
+
 ```text
 ─────────────────────────────────────────────────────
-Group 3 of 8  —  deterministic_flag → draft  —  5 PRs
+Group 3 of 8  —  deterministic_flag → draft  —  27 PRs
 
-Common reason: all have failing CI + unresolved review threads
-past the grace window.
+Common reason: failing CI + unresolved review threads past
+the grace window. Spans the entire fetched queue.
 
   #65401  Add new provider foo                @alice    CI✗ thrd:2  +3/-1  1d
   #65417  Fix parsing of baz                  @bob      CI✗ thrd:1  +12/-4 3h
   #65422  Change caching behavior             @carol    CI✗ thrd:3  +8/-2  2d
   #65460  Typo fix in helm chart              @dave     CI✗ thrd:1  +1/-1  6h
   #65471  Add support for new db dialect      @eve      CI✗ thrd:4  +230/-60 4d
+  …  (22 more — full list visible by scrolling up; nothing hidden behind [A])
 
 Suggested action: convert all to draft with violations comment.
 
-  [A]ll   — apply to all 5
+  [A]ll   — apply to all 27
   [E]ach  — walk one-by-one
   [P]NN   — pull NN out for inspection (e.g. P65471)
-  [O]verride — use a different action for all 5 (comment / close / skip)
-  [S]kip  — leave all 5 alone this sweep
+  [O]verride — use a different action for all 27 (comment / close / skip)
+  [S]kip  — leave all 27 alone this sweep
   [Q]uit  — exit session
 ```
 
@@ -284,83 +301,28 @@ Batch the re-check queries for `[A]` actions — one aliased
 
 ---
 
-## Prefetch plan
+## Lazy drill-in fetches
 
-Whenever a group is presented to the maintainer (an
-information-only turn), fire **in the same turn** any follow-up
-fetches the next decision will need. Parallel tool calls make
-this free — the network round-trip overlaps with the
-maintainer's reading time.
+The full-set fetch in
+[`SKILL.md#step-1--resolve-the-selector-and-fetch-every-page`](SKILL.md#step-1--resolve-the-selector-and-fetch-every-page)
+deliberately omits per-PR deep data (failed-job log snippets,
+full diffs, author profile rollups). Defer those to the moment
+the maintainer pulls a PR out of a group via `[P]NN`, `[E]`, or
+`[W]` on the drill-in screen.
 
-Concrete prefetches:
+When a per-PR drill-in fires, fetch in the same tool-call turn:
 
-| Currently showing | Prefetch |
+| Drill-in context | Fetch |
 |---|---|
-| Any group | Next page's PR-list + rollup query (if `has_next_page` and `page_num < max_num / 50`), then **pre-classify and pre-render the first group** of that page — see [`#pre-classification-and-pre-rendering-of-the-next-page`](#pre-classification-and-pre-rendering-of-the-next-page) below |
-| `pending_workflow_approval` group | `gh pr diff <N>` for the first 2 PRs in the group |
-| `deterministic_flag → draft/comment` group, one PR at a time | Failed-job log snippets for the current PR and the next PR in the queue |
-| `close` group (per-PR) | Author's full open-PR list (for the "you have N flagged PRs" line in the body) |
-| Any per-PR drill-in | Author profile (account age, repo merge rate) if not already cached |
+| `pending_workflow_approval` group, any PR | `gh pr diff <N>` for the workflow-approval safety review |
+| `deterministic_flag → draft/comment` PR | Failed-job log snippets per [`fetch-and-batch.md#optional-failed-job-log-snippets-deferred`](fetch-and-batch.md#optional-failed-job-log-snippets-deferred) |
+| `close` group (per-PR confirm) | Author's full open-PR list (for the "you have N flagged PRs" line in the body) |
+| Any per-PR drill-in pressing `[W]` | Full diff via `gh pr diff <N>`, cached in the session by head SHA |
 
-Do **not** prefetch:
-
-- Data for groups the maintainer may not reach this session
-  (page 3 when they're on page 1).
-- Full diffs for non-workflow-approval PRs unless the
-  maintainer actually presses `[W]`.
-- Author profiles for PRs in stale-sweep groups — they're being
-  closed or drafted with minimal per-PR custom data, so the
-  profile costs more than it saves.
-
-When a prefetched result lands before the maintainer acts, store
-it in the session cache; when the maintainer eventually triggers
-the drill-in, it's instant.
-
-### Pre-classification and pre-rendering of the next page
-
-The next-page prefetch is most valuable when it carries the page
-all the way through to a presentable form, not just to raw
-GraphQL nodes. Classification is a pure function over the
-fetched data (no further GraphQL, no prompts — see
-[`classify-and-act.md`](classify-and-act.md)), and so is the
-group-screen template ([`#group-presentation`](#group-presentation));
-both can run eagerly the moment the prefetch resolves. Pipeline:
-
-1. **Turn N** (presenting page N's current group): fire the
-   page-(N+1) GraphQL call in parallel with the group screen,
-   as the table above documents.
-2. **Turn N+1** (or whenever the prefetch resolves, before the
-   maintainer's decision lands): apply pre-filters F1–F5b, walk
-   the decision table top-to-bottom, run the Real-CI guard, and
-   group the resulting `(pr, classification, action, reason)`
-   tuples — exactly as Steps 2 and 3 of [`SKILL.md`](SKILL.md)
-   would have done synchronously at page-turn time. Build the
-   first group's screen text from the
-   [group-presentation template](#group-presentation). Stash
-   the bundle under `prefetched_pages.<page_num>` in the
-   session cache — see
-   [`fetch-and-batch.md#session-cache`](fetch-and-batch.md#session-cache)
-   for the schema.
-3. **Page-turn moment** (current page exhausted): instead of
-   re-fetching and re-classifying, read the prefetched bundle
-   and present the first group immediately. The maintainer
-   sees zero classification latency at the page boundary. See
-   [`SKILL.md#step-5--paginate-and-sweep`](SKILL.md#step-5--paginate-and-sweep).
-
-Invalidation: if the optimistic-lock re-check at execute time
-(see [`#optimistic-lock-re-check-before-mutate`](#optimistic-lock-re-check-before-mutate))
-finds a head-SHA mismatch for a PR in the prefetched bundle,
-drop that PR's tuple and re-classify it inline. The bundle as
-a whole survives — a single stale PR does not poison the page.
-
-If the maintainer quits (`[Q]`) on the current page, the
-prefetched bundle is discarded on session exit. The work was
-wasted, but the GraphQL cost was the same one query that would
-have happened at the page-turn anyway — the downside is
-small. Skip the pre-classification (not just the prefetch) only
-when the prefetch itself was skipped per the "last page or no
-larger pending work" heuristic in
-[`fetch-and-batch.md#prefetch-plan`](fetch-and-batch.md#prefetch-plan).
+Cache each lazy fetch in the session cache keyed by `(pr_number,
+head_sha)` — re-entering the same drill-in within a session
+is a cache hit. There is no prefetching across groups; the
+full-set fetch in Step 1 has already paid the upfront cost.
 
 ---
 
@@ -406,7 +368,7 @@ PRs acted on:    22
   - author-confirm requests:  1
   - pings posted:      2
 PRs skipped:     15   (12 already triaged / inside grace, 2 bot, 1 collaborator)
-PRs left pending: 10   (reached [Q] before classifying)
+PRs left pending: 10   (classified but [Q] hit before the group was decided)
 
 Throughput: 22 actions / 25m = 53 PRs/h
 ```

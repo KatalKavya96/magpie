@@ -44,6 +44,9 @@
     }
   },
   "permissions": {
+    "allow": [
+      "Bash(gh api graphql *)"
+    ],
     "deny": [
       "Read(~/.aws/**)",
       "Read(~/.ssh/**)",

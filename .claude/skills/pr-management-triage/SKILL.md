@@ -48,11 +48,22 @@ of scope here.
 
 This skill is the successor to the triage mode of
 `breeze pr auto-triage`. It drops the full-screen TUI in favour
-of a CLI conversation: PRs are presented to the maintainer one
-*group* at a time (grouped by suggested action), and the
-maintainer either bulk-confirms the group, pulls individual PRs
-out for case-by-case handling, or skips. Detail files in this
-directory break the logic out topic-by-topic:
+of a CLI conversation. The flow is:
+
+1. **Fetch the entire candidate set up front** by paginating
+   through GitHub until `has_next_page=false`. The fetch is a
+   no-attention phase — the maintainer can step away while the
+   skill walks the pages.
+2. **Classify every fetched PR in one pass**, building groups
+   that span the whole queue (a `mark-ready` group may carry
+   30 PRs across what was previously six pages).
+3. **Present groups to the maintainer one at a time**, in the
+   fixed risk-ordered sequence. The maintainer bulk-confirms a
+   group, pulls individual PRs out for case-by-case handling,
+   or skips. Within a single group the maintainer never
+   context-switches to a different action class.
+
+Detail files in this directory break the logic out topic-by-topic:
 
 | File | Purpose |
 |---|---|
@@ -191,23 +202,23 @@ PR will quickly blow the maintainer's 5000-point/h GraphQL
 budget. See [`fetch-and-batch.md`](fetch-and-batch.md) for the
 canonical query templates.
 
-**Golden rule 4 — prefetch *and pre-classify* while the
-maintainer is reading.** The next page of PRs, and the
-deeper-data calls (failed-job log snippets, diff previews for
-workflow-approval PRs) are issued in parallel with the
-maintainer's current decision, not serialised behind it.
-Concretely: when you present group N to the maintainer, the
-same tool-call turn also fires off the GraphQL enrichment for
-group N+1 and the diff fetch for any workflow-approval PRs the
-maintainer is likely to see next. **Pre-classification rides
-along for free** — the moment the next-page payload arrives,
-run pre-filters + decision table on it (a pure function over
-the fetched data — zero further GraphQL) and pre-render the
-first group's screen. Stash the bundle under
-`prefetched_pages.<page_num>` in the session cache so Step 5's
-page-turn collapses to a cache read with no classification
-latency. See
-[`interaction-loop.md#prefetch-plan`](interaction-loop.md).
+**Golden rule 4 — fetch all pages up front, then classify
+once, then present.** Pagination happens entirely in Step 1
+before any group is shown to the maintainer. The fetch loop
+runs until `has_next_page=false`, accumulating every PR record
+into a single in-memory set. Classification runs once over the
+full set (a pure function over the fetched data — zero further
+GraphQL). Groups are then formed across the whole queue, not
+per page. The maintainer sees one screen per `(classification,
+action)` group regardless of how many GitHub pages it spans —
+the `mark-ready` group is presented once with every passing
+PR, not chunk-by-chunk. This eliminates the per-page
+context switch and lets the maintainer step away during the
+fetch phase. The cost is one upfront wait; the saving is no
+intra-session context-switching between action classes. See
+[`fetch-and-batch.md#full-pagination-loop`](fetch-and-batch.md#full-pagination-loop)
+and
+[`interaction-loop.md#group-ordering`](interaction-loop.md#group-ordering).
 
 **Golden rule 5 — scope is triage, not review.** The skill
 decides *whether to engage* with a PR and lands a small set of
@@ -393,12 +404,13 @@ via a merge or a misconfigured bot account.
 
 ---
 
-## Step 1 — Resolve the selector and fetch page 1
+## Step 1 — Resolve the selector and fetch every page
 
 Translate the selector into the GraphQL PR-list query from
-[`fetch-and-batch.md`](fetch-and-batch.md). Fetch
-the first page (default 50 PRs) and enrich it in a *single*
-aliased batch call that returns, for every PR on the page:
+[`fetch-and-batch.md`](fetch-and-batch.md). **Walk every page**
+of the result set in a loop until `pageInfo.hasNextPage` is
+false, each iteration issuing one aliased batch call that
+returns, for every PR on the page:
 
 - head SHA, base ref, draft flag, mergeable state,
 - check-rollup state + list of failing check names,
@@ -408,15 +420,34 @@ aliased batch call that returns, for every PR on the page:
   triaged" detection),
 - `authorAssociation` and labels.
 
+Accumulate every PR into a single in-memory list keyed by
+number. Do not classify, do not present, do not prompt the
+maintainer between pages — the fetch loop is uninterrupted,
+runs to completion, and emits one progress line per page so
+the maintainer can step away during the wait. See
+[`fetch-and-batch.md#full-pagination-loop`](fetch-and-batch.md#full-pagination-loop)
+for the canonical loop pattern and rate-limit accounting.
+
+Also fetch, once per session before the page loop:
+
+- the `action_required` workflow-run index, per
+  [`fetch-and-batch.md#mandatory-action_required-run-index-per-page`](fetch-and-batch.md#mandatory-action_required-run-index-per-page)
+- the recent main-branch failures set, per
+  [`fetch-and-batch.md#recent-main-branch-failures`](fetch-and-batch.md#recent-main-branch-failures-for-is-this-failure-systemic)
+
+Both are repo-scoped (not page-scoped) and only need fetching
+once. Stash them on the session for Step 2.
+
 Do not read PR bodies, diffs, or failed-job logs in this step —
 those are deferred to the per-PR drill-in when the maintainer
 pulls a PR out of a group.
 
 ---
 
-## Step 2 — Filter, classify, and pick action
+## Step 2 — Classify the entire fetched set
 
-Run the page through [`classify-and-act.md`](classify-and-act.md):
+Run **every PR fetched in Step 1** through
+[`classify-and-act.md`](classify-and-act.md), once:
 
 1. Apply the [pre-filters](classify-and-act.md#pre-filters) (F1–F5b)
    to drop collaborator PRs, bot accounts, fresh drafts,
@@ -433,9 +464,12 @@ Run the page through [`classify-and-act.md`](classify-and-act.md):
 
 Classification + action selection is a pure function of the data
 already fetched in Step 1. No extra network calls. No prompts.
+The full-set classification runs in a single pass over the
+in-memory list assembled in Step 1 — no pagination, no chunking.
 
-The output is a list of `(pr, classification, action, reason)`
-tuples that the interaction loop then groups in Step 3. See
+The output is a single list of `(pr, classification, action,
+reason)` tuples covering the entire queue, which the
+interaction loop then groups in Step 3. See
 [`rationale.md`](rationale.md) only when a decision needs prose
 context — borderline PR, contested rule, or when editing the
 table itself.
@@ -445,8 +479,14 @@ table itself.
 ## Step 3 — Group and present
 
 Using [`interaction-loop.md`](interaction-loop.md), group the
-tuples by `action` and present each group to the maintainer in
-the order:
+tuples produced in Step 2 by `(classification, action)`. Groups
+**span the entire queue**: every passing PR across every page
+goes into a single `mark-ready` group, every CI-failed PR
+across every page goes into a single `draft` group, and so on.
+The maintainer sees one screen per `(classification, action)`
+class regardless of how many GitHub pages it spans.
+
+Present each group to the maintainer in the order:
 
 1. `pending_workflow_approval` — safety-relevant, goes first
 2. `deterministic_flag` with action `close` — destructive,
@@ -484,9 +524,11 @@ offer:
 without an extra per-PR confirm — those are destructive enough
 that batching must still route through a per-PR review.
 
-While the group is on-screen, prefetch the next group's deeper
-data (failed-job log snippets for the next `draft` group, diff
-previews for the next `approve-workflow` group) in parallel.
+When a PR is pulled out of a group via `[P]NN` or `[E]`, fetch
+the per-PR drill-in data (failed-job log snippets, full diff
+for `[W]`) lazily at that moment. Step 1's full-set fetch
+intentionally omits this deep data — the per-PR cost is paid
+only when the maintainer actually drills in.
 
 ---
 
@@ -509,30 +551,12 @@ window skips the PRs we just handled.
 
 ---
 
-## Step 5 — Paginate and sweep
+## Step 5 — Stale sweeps
 
-If the page had `has_next_page=true` and the maintainer hasn't
-quit, advance to the next page. Two cases:
-
-- **Prefetched** (the common case — see
-  [Golden rule 4](#golden-rules) and
-  [`interaction-loop.md#pre-classification-and-pre-rendering-of-the-next-page`](interaction-loop.md#pre-classification-and-pre-rendering-of-the-next-page)):
-  the next page's PR-list + rollup payload, the
-  `(classification, action, reason)` tuples, and the first
-  group's pre-rendered screen are already in the session cache
-  under `prefetched_pages.<page_num>`. Steps 1 and 2 collapse
-  to a cache read; present the first group immediately and
-  re-enter Step 3.
-- **Not prefetched** (last page, prefetch skipped per the
-  budget rule, or cache miss after invalidation): fall back to
-  re-running Steps 1–4 synchronously.
-
-In either branch, before presenting page N+1's first group,
-fire the prefetch for page N+2 in parallel — Golden rule 4
-applies to every page boundary, not just the first.
-
-When the maintainer has worked through every interactive group
-(or supplied `triage stale`), run the stale sweeps from
+Pagination is finished — Step 1 already walked every page of
+the main candidate set. After the maintainer has worked
+through every interactive group from Step 3 (or supplied
+`triage stale`), run the stale sweeps from
 [`stale-sweeps.md`](stale-sweeps.md):
 
 - close stale drafts older than 7 days with no author reply
@@ -550,11 +574,20 @@ When the maintainer has worked through every interactive group
   days, propose plain `ping` to escalate. See
   [`stale-sweeps.md#sweep-5--stale-author-confirm-request`](stale-sweeps.md#sweep-5--stale-author-confirm-request).
 
-Each sweep emits its own group in the interaction loop (Step 3),
-so the maintainer still confirms before any PR is touched.
-Sweep 4 issues its own paged search (the default search
-excludes labeled PRs) — see
-[`fetch-and-batch.md#search-query-construction`](fetch-and-batch.md#search-query-construction).
+Each sweep that needs a different candidate set than the main
+fetch (e.g. Sweep 4, which queries `label:"ready for
+maintainer review"` instead of excluding it) runs its own
+full-pagination loop using the same pattern as Step 1 — walk
+every page until `hasNextPage=false`, accumulate into a single
+list, classify in one pass, then emit a single group via the
+interaction loop. The maintainer confirms the group before any
+PR is touched. Per-sweep candidate sets are typically small
+(stale candidates concentrate around the back of the queue),
+so the additional fetch loops cost little.
+
+See
+[`fetch-and-batch.md#search-query-construction`](fetch-and-batch.md#search-query-construction)
+for how each sweep's selector translates into a search query.
 
 ---
 
@@ -568,8 +601,8 @@ On exit, print a one-screen summary:
   suspicious flags)
 - counts of PRs skipped and per-reason breakdown (already
   triaged, inside grace window, bot, collaborator)
-- counts of PRs left pending (reached quit, didn't finish the
-  page)
+- counts of PRs left pending (classified in Step 2 but the
+  group containing them wasn't decided before quit)
 - total wall-clock time and PRs-per-minute velocity
 
 The on-screen summary is for the maintainer's quick read at
@@ -659,19 +692,32 @@ When in doubt about the selector, ask the maintainer
 ## Budget discipline
 
 This skill's practical GraphQL budget per full-sweep session
-(one page of 20 PRs, everything acted on) is:
+(every page of the candidate set fetched, everything acted on)
+is:
 
-- 1 query for PR list + rollup enrichment
-- 1 query for "already triaged" classification
-- 0–5 queries for stale-sweep subclassification
+- 1 PR-list + rollup query per page in Step 1 (default
+  `$batchSize=20`, so a 200-PR queue is ~10 page queries)
+- 1 REST call for the `action_required` workflow-run index
+  (paginated, typically ≤3 pages)
+- 1 query for the recent main-branch failures set
+  (cached for 4h)
+- 0–5 additional fetch loops for stale-sweep candidate sets
+  (each loop is itself paginated)
 - 1 mutation per action taken (draft / close / comment / label /
   rerun / workflow-approve)
-- 1 query for next-page prefetch (runs in parallel)
 
-That comes to roughly 3–5 queries + N mutations per page of 20
-PRs. A normal morning sweep (1–3 pages, 20-ish actions) stays
-well under 100 GraphQL points — a tiny fraction of the 5000/h
-budget. If a run starts approaching the limit, the skill is
-mis-batching (most likely: an individual `gh pr view` per PR
-instead of an aliased batch query) — stop and fix the call
-pattern, do not work around it with rate-limit sleeps.
+Per page the cost is `cost=3` against the rate-limit budget
+(see [`fetch-and-batch.md#batch-size`](fetch-and-batch.md#batch-size)),
+so a 200-PR full-sweep is ~30 points of fetch + N mutations —
+well under the 5000/h budget. If a run starts approaching the
+limit, the skill is mis-batching (most likely: an individual
+`gh pr view` per PR instead of an aliased batch query) — stop
+and fix the call pattern, do not work around it with
+rate-limit sleeps.
+
+The fetch loop in Step 1 runs serially page-by-page. Do not
+fire pages in parallel hoping to win wall-clock time — GitHub
+rate-limits per-account and parallel page fetches just push
+you to the throttling boundary faster. The maintainer can
+step away during the fetch; serial pagination uses the budget
+predictably.

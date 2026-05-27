@@ -6,8 +6,9 @@
 Every rate-limit problem this skill is going to have, if it has
 one, will come from making too many small queries. This file
 documents the single batched GraphQL shape the skill uses for
-every page of PRs, the prefetch plan for the *next* page, and the
-session-scoped cache that prevents re-fetching across groups.
+every page of PRs, the **full-pagination loop** that walks the
+entire candidate set before classification runs, and the
+session-scoped cache that holds the fetched set.
 
 ---
 
@@ -184,6 +185,81 @@ expand them. Capture the JSON output and parse it with `jq` or
 
 ---
 
+## Full-pagination loop
+
+Step 1 of [`SKILL.md`](SKILL.md) walks **every page** of the
+candidate set before classification or presentation. Run the
+loop serially until `pageInfo.hasNextPage` is false, then hand
+the accumulated list to Step 2.
+
+```text
+all_prs = []
+cursor = null
+page = 1
+loop:
+    result = graphql_call(searchQuery, batchSize=20, cursor=cursor)
+    all_prs.extend(result.search.nodes)
+    print(f"page {page}: fetched {len(result.search.nodes)} PRs (total: {len(all_prs)})")
+    if not result.search.pageInfo.hasNextPage:
+        break
+    cursor = result.search.pageInfo.endCursor
+    page += 1
+return all_prs
+```
+
+Key invariants:
+
+- **Serial, not parallel.** Pages are issued one after the
+  other. Parallel page fetches do not reliably win wall-clock
+  time (GitHub serialises against the per-account rate-limit
+  budget anyway) and they make rate-limit failures harder to
+  reason about. The maintainer steps away during the fetch;
+  predictability beats sub-second optimisation.
+- **One progress line per page.** Emit a `page N: fetched M
+  PRs (total: K)` line per iteration so the maintainer can see
+  the loop is advancing if they glance over.
+- **No classification, no prompts, no presentation inside the
+  loop.** Classification runs once in Step 2 over the entire
+  `all_prs` set. Presentation runs once in Step 3 over the
+  classified set. The fetch loop is uninterrupted.
+- **Skip prefetch heuristics.** With pages fetched serially up
+  front, there is no per-page maintainer wait to overlap with
+  a next-page prefetch — the old prefetch-during-interaction
+  pattern was an optimisation for the per-page model that no
+  longer applies.
+- **Hard cap.** If a run somehow goes past 50 pages, stop and
+  surface to the maintainer. The default selector is
+  `is:pr is:open` against `<upstream>`; 50 × 20 = 1000 PRs
+  comfortably covers any sane queue, and exceeding that signals
+  either a mis-targeted selector or an unhealthy backlog
+  worth flagging.
+
+Stash the accumulated `all_prs` in the session cache as
+`fetched_prs` (see [`#session-cache`](#session-cache)) before
+returning to Step 2 — a re-invocation within the same session
+window can reuse the set if the maintainer wants to re-run with
+a different action override.
+
+### Per-page accounting
+
+GitHub returns `rateLimit` data alongside each search result.
+Log it on each page so a rate-limit failure surfaces its
+proximate cause:
+
+```graphql
+rateLimit {
+  cost
+  remaining
+  resetAt
+}
+```
+
+A typical page costs `cost=3`. If `remaining` drops below 100
+mid-loop, surface a warning and ask the maintainer whether to
+continue or pause; do not silently sleep and retry.
+
+---
+
 ## Search-query construction
 
 Translate the selector into the GitHub search query:
@@ -323,61 +399,21 @@ session cache.
 
 ---
 
-## Prefetch plan
+## Lazy per-PR fetches (drill-in only)
 
-The interaction loop (see [`interaction-loop.md`](interaction-loop.md))
-presents one group of PRs at a time. *While* a group is on
-screen — i.e. inside the same tool-call turn as the
-presentation — fire the next enrichment call in parallel so the
-next group is already warm by the time the maintainer decides.
+The full-pagination loop in [`#full-pagination-loop`](#full-pagination-loop)
+deliberately omits per-PR deep data — failed-job log
+snippets, full diffs, author profile rollups — because the
+typical pass through the interaction loop never asks for any
+of it. Defer those fetches to the moment the maintainer pulls
+a PR out of a group via `[P]NN`, `[E]`, or `[W]` on the
+per-PR drill-in screen.
 
-Concretely, two parallel GraphQL calls per interaction turn:
-
-| Call A (current turn's result display) | Call B (prefetched) |
-|---|---|
-| PR-list + rollup query for **current** page | PR-list + rollup query for **next** page (using `endCursor` from page 1) |
-| *or* log-snippet fetch for the current `draft` group | *or* diff preview fetch for the next `approve-workflow` group |
-
-Parallelism is a must, not an option — serialising the prefetch
-behind the maintainer's decision doubles end-to-end latency for
-every group. Use the tool harness's parallel tool call feature
-(issue two Bash tool calls in the same response).
-
-If the maintainer is likely to quit (this is the last group),
-skip the prefetch — it's wasted budget. Heuristic: if
-`has_next_page` is false and there's no larger pending work,
-don't prefetch.
-
-### Pre-classify on arrival
-
-Once Call B's result lands (the next-page PR-list payload), do
-**not** wait for the maintainer to finish the current page
-before running classification on it. Classification is a pure
-function over the fetched data (no further network — see
-[`classify-and-act.md`](classify-and-act.md)), so the moment
-the prefetched data arrives:
-
-1. Apply pre-filters F1–F5b to drop collaborator PRs, bot
-   accounts, fresh drafts, already-marked-ready PRs without
-   regression, and PRs with an active maintainer conversation.
-2. Evaluate the decision table top-to-bottom for each
-   surviving PR.
-3. Apply the Real-CI guard for `passing` rows.
-4. Group the resulting `(pr, classification, action, reason)`
-   tuples by `(classification, action)` in the order from
-   [`interaction-loop.md#group-ordering`](interaction-loop.md#group-ordering).
-5. Pre-render the first group's presentation screen from the
-   [group-presentation template](interaction-loop.md#group-presentation).
-6. Stash the bundle under `prefetched_pages.<page_num>` in the
-   session cache (schema below).
-
-The cost is zero GraphQL points; the saving is the entire
-classification "think time" between page N's last group and
-page N+1's first group. Step 5 of [`SKILL.md`](SKILL.md) reads
-the prefetched bundle and presents page N+1's first group
-immediately, with no fresh fetch or re-classification. See
-[`interaction-loop.md#pre-classification-and-pre-rendering-of-the-next-page`](interaction-loop.md#pre-classification-and-pre-rendering-of-the-next-page)
-for the full sequence diagram and invalidation rules.
+The per-PR drill-in is the only place this skill makes a
+per-PR call. See [`#optional-failed-job-log-snippets-deferred`](#optional-failed-job-log-snippets-deferred)
+for the failed-job log recipe and
+[`interaction-loop.md#individual-drill-in-presentation`](interaction-loop.md#individual-drill-in-presentation)
+for the drill-in shape.
 
 ---
 
@@ -408,22 +444,17 @@ anything that isn't needed. Schema:
     "fetched_at": "2026-04-22T08:00:00Z",
     "failing_check_names": ["Helm tests (1.29)", "..."]
   },
-  "prefetched_pages": {
-    "2": {
-      "end_cursor": "Y3Vyc29yOnYyOpHOA...",
-      "fetched_at": "2026-04-22T09:18:14Z",
-      "has_next_page": true,
-      "groups": [
-        {
-          "classification": "deterministic_flag",
-          "action": "draft",
-          "prs": [
-            {"number": 65401, "head_sha": "abc123...", "reason": "CI failed + 2 unresolved threads past grace window"}
-          ],
-          "rendered_screen": "─────────────...\nGroup 1 of 5  —  deterministic_flag → draft  —  3 PRs\n..."
-        }
-      ]
-    }
+  "fetched_prs": {
+    "selector": "is:pr is:open repo:<upstream> sort:updated-asc",
+    "fetched_at": "2026-04-22T09:18:14Z",
+    "pages_fetched": 11,
+    "total_prs": 217,
+    "all_prs": [
+      {"number": 65401, "head_sha": "abc123...", "raw": "<full PR record from Step 1>"}
+    ],
+    "classified": [
+      {"number": 65401, "classification": "deterministic_flag", "action": "draft", "reason": "CI failed + 2 unresolved threads past grace window"}
+    ]
   }
 }
 ```
@@ -436,16 +467,16 @@ anything that isn't needed. Schema:
 - The `recent_main_failures` block is valid for 4 hours; after
   that, re-fetch via the canary/main-branch failure query
   (see below).
-- A `prefetched_pages.<n>` bundle's PR tuples are validated
-  against live head SHAs by the optimistic-lock re-check at
-  execute time (see
+- The `fetched_prs` bundle is the output of one full Step 1
+  pass; its `classified` list is validated against live head
+  SHAs by the optimistic-lock re-check at execute time (see
   [`interaction-loop.md#optimistic-lock-re-check-before-mutate`](interaction-loop.md#optimistic-lock-re-check-before-mutate)).
-  A per-PR mismatch drops that PR's tuple from the bundle
-  and triggers an inline re-classification; the rest of the
-  bundle survives. Discard the entire bundle on session exit —
-  do not persist across sessions.
+  A per-PR head-SHA mismatch triggers an inline re-fetch +
+  re-classify of just that PR; the rest of the bundle
+  survives. Discard the entire bundle on session exit — do not
+  persist across sessions.
 - The whole cache is discardable — losing it only costs one
-  extra enrichment round.
+  extra full-pagination round.
 
 ### Writing discipline
 
@@ -510,9 +541,16 @@ resulting set in the session cache as `recent_main_failures`.
   other lazy structure that might hide the call count. All PR
   fetches happen in a small set of named calls — count them and
   keep the count down.
-- **Do not prefetch the *next-next* page** just because you can.
-  One page ahead is the right depth; two is wasted budget for
-  a session the maintainer will usually end within 1–3 pages.
+- **Do not parallelise the page loop.** Pages are issued
+  serially in [`#full-pagination-loop`](#full-pagination-loop).
+  Parallel page fetches do not win wall-clock time against
+  GitHub's per-account rate-limit and they make failures
+  harder to reason about.
+- **Do not interleave fetching with classification or
+  presentation.** The full-pagination loop runs to completion
+  first; classification runs once over the whole set;
+  presentation comes last. Mixing the phases recreates the
+  per-page context-switching this design was built to remove.
 - **Do not sleep after rate-limit errors.** If a query 403s on
   `X-RateLimit-Remaining: 0`, stop immediately, surface the
   budget info to the maintainer, and let them decide whether to

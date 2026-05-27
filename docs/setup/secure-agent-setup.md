@@ -380,6 +380,9 @@ below, annotated.
     }
   },
   "permissions": {
+    "allow": [
+      "Bash(gh api graphql *)"                  // read-only GraphQL fetches (PR-triage paginated fetch loop, similar bulk reads); MORE SPECIFIC than the `-F`/`-f` ask rules below, so it short-circuits them. Mutations via `gh api graphql -F query='mutation {...}'` slip through this rule and are not prompted — accept this trade-off because the skills in this framework do not route mutations through graphql (REST + explicit `-X`/`--method` is the mutation path).
+    ],
     "deny": [
       "Read(~/.aws/**)", "Read(~/.ssh/**)", "Read(~/.netrc)",
       "Read(~/.docker/**)", "Read(~/.kube/**)",
@@ -399,7 +402,7 @@ below, annotated.
       "Bash(gh issue close *)", "Bash(gh issue comment *)",
       "Bash(gh release create *)",
       "Bash(gh api * -X *)",                     // any non-default-method API call
-      "Bash(gh api * -f *)", "Bash(gh api * -F *)"  // any payload-bearing API call
+      "Bash(gh api * -f *)", "Bash(gh api * -F *)"  // any payload-bearing API call — narrowed by the `gh api graphql *` allow above for the GraphQL read path
     ]
   }
 }
