@@ -516,10 +516,56 @@ informational, not a blocker).
 ### 5d — Email draft (security@-imported only)
 
 Skip this entire substep when the import path detected in Step 2
-is *PR-imported*.
+is *PR-imported*. Two additional skip cases — both **must be
+named explicitly** in the Step 5e rollup terminal entry:
 
-For `security@`-imported trackers, the invalidation reply is one
-of the five [forwarder-routing-policy milestones](../../../docs/security/forwarder-routing-policy.md#milestones--do-relay)
+- **Internal-audit-finding imports.** The tracker was
+  imported from a project-internal markdown audit
+  (`airflow-core-findings.md` or equivalent) with no inbound
+  `security@` thread. No reporter to notify. The rollup
+  terminal entry MUST state: *"No reporter notification owed
+  — internal audit finding, no inbound `security@` thread."*
+- **GHSA-relay-only reports — operator with GHSA write
+  access.** The only inbound channel is a GHSA advisory and
+  the tracker carries no Gmail thread. The operator running
+  the skill IS a maintainer with write access to the
+  `<upstream>` repo's GHSA (verify via
+  `gh api repos/<upstream>/security-advisories/<GHSA-ID>`
+  returning a non-403). In that case the GHSA advisory
+  itself IS the closure communication: post a closing
+  comment on the GHSA, mark the advisory as withdrawn or
+  closed informational, and record in the rollup terminal
+  entry: *"GHSA-relay-only reporter channel
+  (GHSA-XXXX-XXXX-XXXX) — closure communicated as GHSA
+  comment `<URL>` / advisory state set to
+  `<withdrawn|informational>`; no Gmail reply needed."*
+- **GHSA-relay-only reports — operator without GHSA write
+  access.** Same intake (GHSA-only, no Gmail thread) but the
+  operator cannot comment on / modify the GHSA — the API
+  call above returns 403, or the operator is running from a
+  triager account that does not hold GHSA-write membership.
+  In that case the GHSA channel is **not** self-sufficient;
+  the closure must be relayed via ASF Security so Arnout
+  Engelen (or another `@apache.org` forwarder with the
+  required GHSA-write permissions) can post the closure
+  comment / state-change on our behalf. Draft an
+  ASF-relay-shape message per
+  [`tools/gmail/asf-relay.md`](../../../tools/gmail/asf-relay.md):
+  recipient is `engelen@apache.org` (or the named forwarder
+  who relayed the original GHSA report); body includes the
+  clickable GHSA URL on its own line + a paste-ready block
+  in the reporter's voice with the invalid-disposition
+  rationale + canonical CVE-ID (when `duplicate`) for the
+  forwarder to post on the GHSA. Record in the rollup
+  terminal entry: *"GHSA-relay-only reporter channel
+  (GHSA-XXXX-XXXX-XXXX); operator lacks GHSA-write access on
+  `<upstream>`. ASF-relay draft `<draftId>` queued to
+  `<forwarder@apache.org>` requesting they post the closure
+  comment on the GHSA on our behalf — awaiting user review."*
+
+For every other `security@`-imported tracker, the invalidation
+reply is one of the five
+[forwarder-routing-policy milestones](../../../docs/security/forwarder-routing-policy.md#milestones--do-relay)
 (*Report assessed as invalid*) — so the draft fires in both
 direct-reporter and via-forwarder modes; the policy only changes
 the **recipient** and the **body shape**.
@@ -561,6 +607,18 @@ the **recipient** and the **body shape**.
      private; the reporter has no access; references would
      leak. Cite the public Security Model and any public CVEs
      instead.
+   - **Canonical CVE-ID for `duplicate` dispositions.** When
+     the close is a `duplicate` of an existing CVE record, the
+     body MUST name the canonical `CVE-YYYY-NNNNN` ID
+     verbatim — e.g. *"This is the same root cause as
+     `CVE-2026-XXXXX` which we already track and ship the fix
+     for in `apache-airflow` X.Y.Z."* This lets the ASF
+     Security team's dedup workflow group the two threads
+     (per Arnout Engelen's 2026-05-29 ASF-Security ask in the
+     Kyuubi SSRF context). For via-forwarder mode this
+     additionally goes inside the *paste-ready block in the
+     reporter's voice* per the
+     [asf-relay.md shape](../../../tools/gmail/asf-relay.md).
    - **Polite-but-firm.** Per
      [`AGENTS.md`](../../../AGENTS.md#tone-polite-but-firm--no-room-to-wiggle), state
      the team's position once, clearly, with reasoning. Do not
@@ -601,10 +659,21 @@ upsert recipe). Shape:
 
 **Canned response selected:** *<canned section name>* in [`canned-responses.md`](https://github.com/<tracker>/blob/<tracker-default-branch>/<project-config>/canned-responses.md#<anchor>).
 
-**Reporter notification:** <one of:>
-- **`security@`-imported:** Gmail draft `<draftId>` created on thread `<threadId>` — awaiting user review.
+**Reporter notification:** <one of — required line, never omit:>
+- **`security@`-imported, direct-reporter mode:** Gmail draft `<draftId>` created on thread `<threadId>` anchored at message `<messageId>` — awaiting user review.
+- **`security@`-imported, via-forwarder mode (ASF-relay):** ASF-relay draft `<draftId>` to `<forwarder@apache.org>` on thread `<threadId>` per [`asf-relay.md`](https://github.com/apache/airflow-steward/blob/main/tools/gmail/asf-relay.md) shape (clickable URL + paste-ready reporter-voice block) — awaiting user review.
+- **`security@`-imported, `duplicate` disposition:** *(same as direct or via-forwarder above; the draft body MUST name the canonical CVE-ID per Step 5d).*
+- **No notification owed — internal audit finding:** Tracker imported from project-internal markdown audit (`<source-markdown>`), no inbound `security@` thread, no reporter to notify.
+- **No Gmail draft owed — GHSA-relay-only, operator has GHSA-write access:** GHSA-relay-only reporter channel (`GHSA-XXXX-XXXX-XXXX`); closure communicated as GHSA comment `<URL>` / advisory state set to `<withdrawn|informational>`. No Gmail reply needed.
+- **ASF-relay draft owed — GHSA-relay-only, operator lacks GHSA-write access:** GHSA-relay-only channel (`GHSA-XXXX-XXXX-XXXX`); operator's account does not have GHSA-write on `<upstream>`. ASF-relay draft `<draftId>` queued to `<forwarder@apache.org>` requesting they post the closure comment on the GHSA on our behalf — awaiting user review.
 - **PR-imported:** none (no reporter; per [Reporter credit policy](https://github.com/<tracker>/blob/<tracker-default-branch>/.claude/skills/security-issue-import-from-pr/SKILL.md#reporter-credit-policy-for-public-pr-imports)).
 - **Indeterminate import path:** none (flag from Step 2 surfaced; user explicitly chose silent close).
+
+**The Reporter-notification line is required on every invalidate
+rollup entry.** Exactly one of the cases above must apply. If
+none does (the channel is genuinely ambiguous), surface as a
+blocker to the user before closing — do NOT post the rollup
+entry without the line.
 
 **Project board:** archived (item `<item-id>`).
 
