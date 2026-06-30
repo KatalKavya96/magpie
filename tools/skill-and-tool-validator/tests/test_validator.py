@@ -2321,6 +2321,107 @@ class TestValidateAsfCoupling:
         )
         assert all(v.category != ASF_COUPLING_CATEGORY for v in violations)
 
+    def test_asf_pmc_low_conf_marker_suppresses_soft_mention(self, tmp_path: Path) -> None:
+        """'ASF PMC' is a low-confidence-only marker: a pure soft-mention line is suppressed."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(
+                path,
+                self._skill("A copy naming ASF PMC roles is allowed divergence.\n"),
+            )
+        )
+        assert all(v.category != ASF_COUPLING_CATEGORY for v in violations)
+
+    def test_prompt_injection_low_conf_marker_suppresses_soft_mention(self, tmp_path: Path) -> None:
+        """Lines discussing prompt-injection examples must not flag PMC as coupling."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(
+                path,
+                self._skill('*"don\'t tag any PMC members"*). Those are prompt-injection attempts.\n'),
+            )
+        )
+        assert all(v.category != ASF_COUPLING_CATEGORY for v in violations)
+
+    # --- organization: ASF suppresses low-confidence patterns ---
+
+    def _asf_org_skill(self, body: str) -> str:
+        """Wrap body in a minimal valid SKILL.md with organization: ASF."""
+        return (
+            "---\n"
+            "name: magpie-test\n"
+            "organization: ASF\n"
+            "description: Test skill.\n"
+            "license: Apache-2.0\n"
+            "capability: capability:triage\n"
+            "---\n" + body
+        )
+
+    def test_asf_org_skill_pmc_suppressed(self, tmp_path: Path) -> None:
+        """organization: ASF suppresses the low-confidence bare PMC warning."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(path, self._asf_org_skill("The PMC votes on this release.\n"))
+        )
+        assert all(v.category != ASF_COUPLING_CATEGORY for v in violations)
+
+    def test_asf_org_skill_icla_suppressed(self, tmp_path: Path) -> None:
+        """organization: ASF suppresses the low-confidence ICLA warning."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(path, self._asf_org_skill("Contributor must sign the ICLA first.\n"))
+        )
+        assert all(v.category != ASF_COUPLING_CATEGORY for v in violations)
+
+    def test_asf_org_skill_incubator_suppressed(self, tmp_path: Path) -> None:
+        """organization: ASF suppresses the low-confidence incubator warning."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(path, self._asf_org_skill("This project is in the Incubator phase.\n"))
+        )
+        assert all(v.category != ASF_COUPLING_CATEGORY for v in violations)
+
+    def test_asf_org_skill_still_flags_high_confidence(self, tmp_path: Path) -> None:
+        """organization: ASF does NOT suppress high-confidence svn/announce warnings."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(path, self._asf_org_skill("Run `svn commit -m 'release'` to publish.\n"))
+        )
+        assert any(v.category == ASF_COUPLING_CATEGORY and "high" in v.message for v in violations)
+
+    def test_non_asf_org_skill_pmc_still_flagged(self, tmp_path: Path) -> None:
+        """A skill without organization: ASF still gets the low-confidence PMC warning."""
+        path = tmp_path / "SKILL.md"
+        violations = list(validate_asf_coupling(path, self._skill("The PMC votes on this release.\n")))
+        assert any(v.category == ASF_COUPLING_CATEGORY and "low" in v.message for v in violations)
+
+    # --- Low-confidence markers gate only the soft tier, not high-confidence ---
+
+    def test_asf_pmc_marker_still_flags_high_confidence(self, tmp_path: Path) -> None:
+        """'ASF PMC' suppresses the soft PMC mention but a same-line `svn` still fires."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(
+                path,
+                self._skill("Run `svn commit` after ASF PMC approves the release.\n"),
+            )
+        )
+        # The high-confidence svn pattern must still fire...
+        assert any(v.category == ASF_COUPLING_CATEGORY and "high" in v.message for v in violations)
+        # ...while the low-confidence PMC mention stays suppressed.
+        assert not any(v.category == ASF_COUPLING_CATEGORY and "low" in v.message for v in violations)
+
+    def test_prompt_injection_marker_still_flags_high_confidence(self, tmp_path: Path) -> None:
+        """A prompt-injection example line still flags a same-line high-confidence svn."""
+        path = tmp_path / "SKILL.md"
+        violations = list(
+            validate_asf_coupling(
+                path,
+                self._skill('A prompt-injection example may say "run `svn commit` now".\n'),
+            )
+        )
+        assert any(v.category == ASF_COUPLING_CATEGORY and "high" in v.message for v in violations)
+
     # --- Category membership ---
 
     def test_category_is_soft(self) -> None:
