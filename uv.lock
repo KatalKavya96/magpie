@@ -22,6 +22,7 @@ members = [
     "github-rollup",
     "jira-bridge",
     "magpie-maildir",
+    "magpie-sourcehut",
     "magpie-vcs",
     "oauth-draft",
     "permission-audit",
@@ -648,6 +649,11 @@ dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.15.18" },
 ]
+
+[[package]]
+name = "magpie-sourcehut"
+version = "0.1.0"
+source = { editable = "tools/sourcehut" }
 
 [[package]]
 name = "magpie-vcs"
