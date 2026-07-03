@@ -56,7 +56,7 @@ Autonomous* (the renamed former *Auto-merge*).
 
 | Mode | Purpose | Status | Skill count |
 |---|---|---|---|
-| **Triage** | *(Agentic Triage)* Issues, security reports, PRs: spot, classify, route, surface duplicates. Every output is a suggestion the human signs off on. | stable (security) / experimental (pr-management, issue-management, contributor-nomination, repo-health, release-management) | 30 |
+| **Triage** | *(Agentic Triage)* Issues, security reports, PRs: spot, classify, route, surface duplicates. Every output is a suggestion the human signs off on. | stable (security) / experimental (pr-management, issue-management, contributor-nomination, repo-health, release-management) | 31 |
 | **Mentoring** | *(Agentic Mentoring)* Joins issue and PR threads in a teaching register: clarifying questions, pointers to project conventions, paired examples from prior PRs, hand-off to a human when scope exceeds the agent. Also authors net-new good first issues and curates the existing backlog to lower onboarding latency. | experimental | 5 |
 | **Drafting** | *(Agentic Drafting)* Agent drafts a fix for a well-scoped problem and opens a PR; every PR is reviewed and merged by a human committer. | stable (security-only); experimental (issue-management, audit-findings, release-management family) | 9 |
 | **Pairing** | *(Agentic Pairing)* Developer-side dev-cycle skills with mentorship intrinsic — multi-agent review pipelines, self-review and pre-flight patterns, scoped fix drafting under the developer's driver's seat. | experimental | 2 |
@@ -78,6 +78,7 @@ do not act without human review.
 | [`pr-management-triage`](../skills/pr-management-triage/SKILL.md) | Generic PR queue triage. | experimental |
 | [`pr-management-stats`](../skills/pr-management-stats/SKILL.md) | PR-queue reporting (supports triage decisions). | experimental |
 | [`pr-management-code-review`](../skills/pr-management-code-review/SKILL.md) | Maintainer-facing deep code review. | experimental |
+| [`reviewer-routing`](../skills/reviewer-routing/SKILL.md) | Suggest a primary reviewer and optional backup for an open issue or PR from the configured roster, touched areas, git-history familiarity, and current review load; waits for maintainer confirmation before any assignment or review request. | experimental |
 | [`issue-triage`](../skills/issue-triage/SKILL.md) | General-issue-tracker triage (per-issue classification + disposition proposal). | experimental |
 | [`issue-reassess`](../skills/issue-reassess/SKILL.md) | Pool-level sweep of resolved / EOL issues for re-assessment. | experimental |
 | [`issue-stale-sweep`](../skills/issue-stale-sweep/SKILL.md) | Sweep open issues for inactivity past a configurable threshold; proposes a nudge (`REQUEST-UPDATE`) or a pre-close notice (`CLOSE-STALE`); waits for maintainer confirmation before posting. | experimental |
