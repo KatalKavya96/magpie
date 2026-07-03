@@ -11,30 +11,37 @@ Context to load first:
   applies.
 - `tools/spec-loop/specs/*` — the functional description of the product.
 - `tools/spec-loop/IMPLEMENTATION_PLAN.md` (if present; may be stale).
+- The appended **Compact repository inventory** block from the runner —
+  use it as the first routing map before opening full files.
 - The appended **Open pull-request context** block from the runner.
 - The appended **Local work-item branches** block from the runner. Built
   but un-pushed work items live here, not in the PR context.
 
 Steps:
 
-1. Study each spec in `tools/spec-loop/specs/` and compare it against the
+1. Read the appended **Compact repository inventory**. Use it to identify
+   the likely relevant specs, skills, tools, validation commands, and
+   known gaps before opening full files. The inventory is a routing aid,
+   not proof: before recording a gap or declaring one closed, confirm with
+   a code search or direct file read.
+2. Study each spec in `tools/spec-loop/specs/` and compare it against the
    actual code it names in **Where it lives** (`.claude/skills/`,
    `tools/`, `docs/`). You may use parallel subagents for reading. Do NOT
    assume something is missing — confirm with a code search first.
-2. Read the appended **Open pull-request context** and **Local work-item
+3. Read the appended **Open pull-request context** and **Local work-item
    branches**. Treat both open PRs and existing local work-item branches as
    in-flight work. If an apparent gap is already substantially covered by an
    open PR (including draft PRs) or already built on a local work-item
    branch, do not add it as a planned work item. The loop never pushes, so a
    built item may exist only as a local branch with no PR yet.
-3. For each spec, identify the **gaps**: a `proposed` area with no skill,
+4. For each spec, identify the **gaps**: a `proposed` area with no skill,
    a documented step that drifted from the code, a missing test, a
    `Known gaps` item. Each gap is a candidate work item.
-4. Rewrite `tools/spec-loop/IMPLEMENTATION_PLAN.md` as a prioritised list
+5. Rewrite `tools/spec-loop/IMPLEMENTATION_PLAN.md` as a prioritised list
    of work items. Each work item names: the change, the spec it serves,
    its **Validation** command, and a branch slug (`<slug>`, the bare
    slug — **no `spec/` or other prefix, no numbers**).
-5. Do NOT create work items against an `off` spec (e.g. Agentic Autonomous) —
+6. Do NOT create work items against an `off` spec (e.g. Agentic Autonomous) —
    that would skip the proof MISSION requires.
 
 Rules:

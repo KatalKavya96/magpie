@@ -34,6 +34,7 @@ members = [
     "security-tracker-stats-dashboard",
     "skill-and-tool-validator",
     "skill-evals",
+    "spec-inventory",
     "spec-status-index",
     "spec-validator",
     "symlink-lint",
@@ -1110,6 +1111,27 @@ dev = [
 name = "skill-evals"
 version = "0.1.0"
 source = { editable = "tools/skill-evals" }
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=2.1.0" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "ruff", specifier = ">=0.15.18" },
+]
+
+[[package]]
+name = "spec-inventory"
+version = "0.1.0"
+source = { editable = "tools/spec-inventory" }
 
 [package.dev-dependencies]
 dev = [

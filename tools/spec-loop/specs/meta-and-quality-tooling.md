@@ -46,6 +46,9 @@ trustworthy as it grows.
 - `tools/spec-status-index/` — deterministic `uv` tool that reads
   `tools/spec-loop/specs/` and prints specs grouped by status; used by
   build iterations to mechanically select the next work item.
+- `tools/spec-inventory/` — deterministic `uv` tool that summarizes
+  specs, skills, and tools into a compact routing inventory for spec-loop
+  prompts.
 - `tools/spec-validator/` — validates spec-loop spec frontmatter
   (required keys, valid `status`/`kind`/`mode` values, body-section
   presence, `Known gaps` section required in functional specs,
@@ -100,12 +103,15 @@ trustworthy as it grows.
    implementation are explicitly marked reserved or future.
 6. `docs/modes.md` skill lists and shipped counts are checked against
    live skill frontmatter.
+7. `spec-inventory` emits a compact, deterministic routing map for specs,
+   skills, and tools, and has its own tests.
 
 ## Validation
 
 ```bash
 uv run --project tools/skill-and-tool-validator --group dev pytest
 uv run --project tools/skill-and-tool-validator --group dev skill-and-tool-validate
+uv run --project tools/spec-inventory --group dev pytest tools/spec-inventory/tests
 ```
 
 ## Known gaps

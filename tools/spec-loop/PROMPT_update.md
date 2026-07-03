@@ -13,6 +13,8 @@ Context to load first:
 - `tools/spec-loop/AGENTS.md` and the repo-wide `/AGENTS.md`.
 - `tools/spec-loop/specs/*` — the current functional description.
 - The actual code: `.claude/skills/`, `tools/`, `docs/`, `docs/modes.md`.
+- The appended **Compact repository inventory** block from the runner —
+  use it as the first routing map before opening full files.
 
 Steps:
 
@@ -23,19 +25,23 @@ Steps:
    that commit. If the diff is empty, exit without creating a branch or
    commit (print "specs already in sync as of <SHA>"). If no previous
    sync commit is recorded, fall through to a full inventory.
-2. **Create a uniquely-named sync branch off the integration base**, then
+2. Read the appended **Compact repository inventory**. Use it to identify
+   likely spec/source relationships and validation commands before opening
+   full files. The inventory is a routing aid, not proof; confirm with a
+   code search before recording something as present or absent.
+3. **Create a uniquely-named sync branch off the integration base**, then
    switch to it: `git checkout -b "sync-specs-$(date +%Y%m%d-%H%M%S)"`. A
    fresh branch every run keeps each sync as its own reviewable PR and
    never collides with or commits on top of a previous `sync-specs*`
    branch. Note the exact name you created — you will print it in the
    human-run commands below. Never commit the sync to the integration
    branch.
-3. Inventory the code with parallel subagents (full inventory only if
+4. Inventory the code with parallel subagents (full inventory only if
    step 1 did not narrow the surface):
    - every `.claude/skills/*/SKILL.md` (name, mode, what it does);
    - every `tools/*` project (what it does, its tests);
    - the mode/status table in `docs/modes.md`.
-4. Diff that inventory against `tools/spec-loop/specs/`:
+5. Diff that inventory against `tools/spec-loop/specs/`:
    - **New functionality with no spec** → author a new topic-named spec
      (no number prefix) following the format in
      [`specs/README.md`](specs/README.md), grounded in the real code it
@@ -47,9 +53,9 @@ Steps:
      are reflected).
    - **Removed functionality** → mark the spec or move it to a `Known
      gaps`/retired note; do not silently delete history.
-5. Update `specs/overview.md` and `specs/README.md` indexes if areas were
+6. Update `specs/overview.md` and `specs/README.md` indexes if areas were
    added or renamed.
-6. `git add -A` then `git commit` with subject
+7. `git add -A` then `git commit` with subject
    `docs(spec-loop): sync specs with contributed functionality` and a
    `Generated-by: Claude (Opus 4.7)` trailer. **Do NOT touch
    `tools/spec-loop/.last-sync` yourself** — `loop.sh` amends the marker

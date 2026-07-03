@@ -80,6 +80,7 @@ See the SECURITY notes in [`loop.sh`](loop.sh).
 | [`AGENTS.md`](AGENTS.md) | Loop-scoped operational rules (repo map, validation commands, branch + hard-limit rules). |
 | `PROMPT_plan.md` / `PROMPT_build.md` / `PROMPT_update.md` / `PROMPT_consolidate.md` | The per-beat prompts. |
 | `loop.sh` | The runner. |
+| `../spec-inventory/` | Deterministic compact inventory helper appended to prompts as a routing aid. |
 
 ## Modes
 

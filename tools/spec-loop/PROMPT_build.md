@@ -10,6 +10,8 @@ Context to load first:
   commands, branch + hard-limit rules). The repo-wide `/AGENTS.md` also
   applies (commit trailers, placeholder convention, confidentiality).
 - `tools/spec-loop/IMPLEMENTATION_PLAN.md` — the prioritised work items.
+- The appended **Compact repository inventory** block from the runner —
+  use it to route to likely specs/source files before opening full files.
 - The appended **Open pull-request context** block from the runner.
 - The appended **Local work-item branches** block from the runner. The
   loop never pushes, so a work item it already built shows up here, not in
@@ -19,7 +21,11 @@ Context to load first:
 
 Steps:
 
-1. Read the appended **Open pull-request context** and **Local work-item
+1. Read the appended **Compact repository inventory**. Use it as a routing
+   aid for selecting likely relevant specs, skills, tools, and validation
+   commands. It is not proof; verify the selected work item against the
+   plan and exact source files before changing anything.
+2. Read the appended **Open pull-request context** and **Local work-item
    branches**. Treat both open PRs and existing local work-item branches as
    in-flight work. Pick the single highest-priority work item from
    `IMPLEMENTATION_PLAN.md`. If a **Tooling source** block is appended
@@ -30,32 +36,32 @@ Steps:
    not already built as a local work-item branch (the loop never pushes, so
    a built item lives only as a local branch until a human pushes it). One
    only.
-2. **Create its branch off the integration base**, then switch to it:
+3. **Create its branch off the integration base**, then switch to it:
    `git checkout -b <slug>` where `<slug>` is the work item's branch — the
    bare slug, **no `spec/` or other prefix** (e.g.
    `pairing-self-review`). NEVER commit the work to the integration
    branch. One branch per work item.
-3. Read only the relevant spec file(s) — from the control branch if a
+4. Read only the relevant spec file(s) — from the control branch if a
    **Tooling source** block is appended, otherwise from the working tree —
    plus the relevant `.claude/skills/` / `tools/` / `docs/` files from the
    working tree. Confirm what already exists before writing — do not assume.
-4. Implement the work item **completely** — no placeholders, no stubs.
+5. Implement the work item **completely** — no placeholders, no stubs.
    Skills: follow the skill format (frontmatter `name` / `description` /
    `license`, SPDX header, placeholder convention, every state change a
    confirmed proposal) **and ship an eval suite** under
    `tools/skill-evals/evals/<skill-name>/` exercising each step with
    fixture cases (per `/AGENTS.md` § Reusable skills — a skill without a
    matching eval suite is incomplete). Tools: ship tests.
-5. Run the work item's **Validation** command(s) from its spec (the
+6. Run the work item's **Validation** command(s) from its spec (the
    backpressure). Fix until they pass.
-6. Specs and `IMPLEMENTATION_PLAN.md` live on the control branch. If a
+7. Specs and `IMPLEMENTATION_PLAN.md` live on the control branch. If a
    **Tooling source** block is appended, they are **not** on this work
    branch — do not create or edit them here; instead note any `status` or
    `Known gap` change in the PR body for a later plan/update beat to
    reconcile. (If no such block is present, the tooling is on this branch:
    update **only that spec's** frontmatter/Known-gaps, and never
    `IMPLEMENTATION_PLAN.md`.)
-7. `git add -A` then `git commit` with an imperative subject and a
+8. `git add -A` then `git commit` with an imperative subject and a
    `Generated-by: Claude (Opus 4.7)` trailer. **Never** add a
    `Co-Authored-By:` trailer for an agent.
 

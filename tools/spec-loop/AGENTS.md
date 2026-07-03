@@ -30,6 +30,9 @@ Run the spec's own **Validation** block first. General checks:
 # Validate skill definitions (frontmatter, links, placeholders)
 uv run --project tools/skill-and-tool-validator --group dev skill-and-tool-validate
 
+# Validate the compact inventory helper
+uv run --project tools/spec-inventory --group dev pytest tools/spec-inventory/tests
+
 # A skill's behavioural eval suite (every skill must have one)
 uv run --project tools/skill-evals skill-eval tools/skill-evals/evals/<skill-name>/
 

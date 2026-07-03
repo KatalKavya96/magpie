@@ -335,6 +335,25 @@ local_branch_context() {
     done <<< "$branches"
 }
 
+compact_inventory_context() {
+    echo ""
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "## Compact repository inventory"
+        echo ""
+        echo "- unavailable: uv CLI not found on PATH."
+        return 0
+    fi
+
+    local inventory
+    if inventory="$(uv run --project tools/spec-inventory spec-inventory --brief --max-where 1 --max-validation 1 --max-gaps 1 2>/dev/null)"; then
+        printf '%s\n' "$inventory"
+    else
+        echo "## Compact repository inventory"
+        echo ""
+        echo "- unavailable: spec-inventory failed. Fall back to direct file reads."
+    fi
+}
+
 while true; do
     if [ "$MAX_ITERATIONS" -gt 0 ] && [ "$ITERATION" -ge "$MAX_ITERATIONS" ]; then
         echo "Reached max iterations: $MAX_ITERATIONS"; break
@@ -387,6 +406,7 @@ while true; do
         echo "Error: could not read '$ACTIVE_PROMPT' from the working tree or control branch '$TOOLING_REF'." >&2
         rm -f "$PROMPT_WITH_CONTEXT"; break
     fi
+    compact_inventory_context >> "$PROMPT_WITH_CONTEXT"
     # Update mode just diffs code against specs; it doesn't pick a work item, so
     # the open-PR list (a network round-trip via gh) buys nothing. Skip it there.
     if [ "$MODE" != "update" ]; then
