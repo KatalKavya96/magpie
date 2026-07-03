@@ -16,9 +16,16 @@ They must NOT contain any of:
   security motivation)
 - Any reporter name tied to a security finding
 - The word `sensitive` in a context that points at an unmasked-credential bug
-- Wording that would allow a reader to reconstruct the attack vector from
-  the title alone (e.g. "prevent RCE via pickle.loads in XCom" — "RCE" and
-  "exploit path" language reveals the security framing)
+- Explicit exploitation detail spelled out in the title — a working payload,
+  exact reproduction steps, or an exploit primitive
+
+Naming the bug class or affected component in neutral terms (for example
+`SSRF`, `deserialization`, `path traversal`, `RCE`) is **allowed** — it is
+ordinary bug-fix language, as the good examples below show. Only the explicit
+framing words above (plus reporter names, CVE ids, and spelled-out exploit
+detail) are violations. When listing `forbidden_terms_found`, include only
+those framing terms that actually appear — never neutral technical
+descriptors of the bug class.
 
 Tracker URLs, `<tracker>#NNN`, and bare `#NNN` references ARE allowed —
 they are public-safe identifiers. The constraint is on security framing of
@@ -32,7 +39,7 @@ Good examples (neutral, accurate):
 Bad examples (reveal security framing):
 - "cve-2026-40690-xcom-fix" (contains CVE ID)
 - "Fix security vulnerability in connection test endpoint" (contains "security vulnerability")
-- "Prevent RCE via XCom pickle deserialization" (attack-vector language)
+- "Patch advisory-tracked security hole in XCom" (contains "advisory" and "security")
 
 ## Output
 

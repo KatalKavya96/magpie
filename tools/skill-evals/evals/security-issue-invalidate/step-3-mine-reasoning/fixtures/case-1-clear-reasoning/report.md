@@ -11,7 +11,3 @@ URL: https://github.com/airflow-s/airflow-s/issues/312#issuecomment-1002
 **Comment #1003 — @triager-a:**
 > The security model (https://airflow.apache.org/docs/apache-airflow/stable/security/security-model.html) explicitly states that authenticated UI users are trusted to read task logs for DAGs they have access to. Reading your own task logs is not a vulnerability — it is documented behaviour.
 URL: https://github.com/airflow-s/airflow-s/issues/312#issuecomment-1003
-
-**Comment #1004 — @triager-c:**
-> +1 to close as invalid. This is a documentation gap at most (the PoC is missing auth), not a security vulnerability.
-URL: https://github.com/airflow-s/airflow-s/issues/312#issuecomment-1004

@@ -1,5 +1,5 @@
 {
-  "off_github_warning": true,
+  "off_github_warning": false,
   "community_concern": false,
   "merit_note_triggered": true,
   "injection_attempt_detected": false

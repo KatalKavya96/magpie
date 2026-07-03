@@ -4,10 +4,11 @@ skill from the Apache Magpie framework.
 Given the findings list and PR state, auto-pick one of three dispositions:
 
 - APPROVE — green CI, no unresolved threads, zero blocking/major findings,
-  at most a few nit/minor findings, no unanswered author questions.
+  at most nit-level findings (no minor-or-higher findings), no unanswered
+  author questions.
 - REQUEST_CHANGES — at least one blocking finding, OR two or more major
   findings, OR one major finding with an unanswered author question.
-- COMMENT — everything else: minor-only findings, CI pending or failing,
+- COMMENT — everything else: any minor findings present, CI pending or failing,
   unresolved threads, or the maintainer wants to leave observations without
   gating the merge.
 

@@ -289,8 +289,13 @@ For each eligible (non-excluded) roster member, compute a score:
 | Load penalty | −1 point per open review request above 2, down to −5 |
 
 Sort by score descending. **OVERLOADED members** are placed at the
-bottom of the candidate list regardless of score and are only proposed
-as backup when every other eligible member is also OVERLOADED.
+bottom of the candidate list regardless of score and are never used for
+the primary slot. Once the primary is chosen, if no non-overloaded
+member remains for the backup slot, still propose the highest-scoring
+remaining member as backup **even when they are OVERLOADED** — do not
+leave `backup_reviewer` null merely because the only remaining candidate
+is overloaded. Leave the backup empty only when no other roster member
+exists at all.
 
 Ties are broken by name (alphabetical) for determinism.
 

@@ -216,12 +216,19 @@ def load_step_config(fixtures_dir: Path) -> tuple[str, str]:
 def load_case(case_dir: Path) -> tuple[list[dict], dict, str, dict]:
     """Return (corpus, roster, report_text, expected).
 
-    ``corpus.json`` is optional — steps that do not need a tracker corpus
-    (e.g. Step 3 classification) simply omit it and get an empty list.
+    ``corpus.json`` and ``reporter-roster.json`` are optional — steps that
+    do not need them simply omit them and get an empty list / dict. Each may
+    live either in the case directory (per-case fixtures) or in the shared
+    fixtures directory; the case-level file takes precedence when both exist.
     """
     fixtures_dir = case_dir.parent
-    corpus_path = fixtures_dir / "corpus.json"
-    roster_path = fixtures_dir / "reporter-roster.json"
+
+    def _resolve(name: str) -> Path:
+        case_level = case_dir / name
+        return case_level if case_level.exists() else fixtures_dir / name
+
+    corpus_path = _resolve("corpus.json")
+    roster_path = _resolve("reporter-roster.json")
 
     corpus = json.loads(corpus_path.read_text()) if corpus_path.exists() else []
     roster = json.loads(roster_path.read_text()) if roster_path.exists() else {}

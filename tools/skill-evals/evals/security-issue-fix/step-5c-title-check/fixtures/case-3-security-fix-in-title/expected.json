@@ -3,6 +3,8 @@
   "pr_title": "Security fix: prevent SSRF in connection test endpoint",
   "branch_name_valid": true,
   "pr_title_valid": false,
-  "forbidden_terms_found": ["security fix", "SSRF"],
+  "forbidden_terms_found": [
+    "security fix"
+  ],
   "recommendation": "Remove security framing from PR title; use neutral language e.g. 'Restrict connection test endpoint to configured host allowlist'"
 }

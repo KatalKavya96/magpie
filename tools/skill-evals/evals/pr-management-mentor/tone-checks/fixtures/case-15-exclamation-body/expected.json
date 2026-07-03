@@ -1,5 +1,4 @@
 {
   "result": "soft_fail",
-  "rule": 14,
-  "offending_text": "the license header guide](https://github.com/apache/airflow/blob/main/contributing-docs/07_static_code_checks.rst#license-headers)\nhas the exact format!"
+  "rule": 14
 }

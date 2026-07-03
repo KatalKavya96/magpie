@@ -367,6 +367,10 @@ tables-only (`--tables-only`) fallbacks are available.
 8. **Detailed table** (collapsible in HTML, printed in markdown): one row
    per area with columns `Area | Total | Untriaged | Triaged | In-progress
    | Stale | < 7 d | 7–30 d | 30–90 d | > 90 d`. Include the `TOTAL` row.
+   This section is **never stubbed**: when no issues carry an area label,
+   every issue maps to the `(no area)` pseudo-area, so render a single
+   `(no area)` row plus the `TOTAL` row. (Only the area-pressure *ranking*
+   in section 4 stubs when there are no area labels to rank.)
 9. **Legend** — short explanation of every column abbreviation, colour
    code, and metric on the dashboard.
 

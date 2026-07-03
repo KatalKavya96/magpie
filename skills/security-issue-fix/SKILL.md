@@ -402,7 +402,9 @@ true)
 - The scope is large (many files, migration, API change, breaking
   change) — a public PR would invite questions in review that hint at
   the security nature of the fix, and that has to be handled via the
-  private-PR fallback (process step 9).
+  private-PR fallback (process step 9). When you stop for this reason,
+  the stop condition must name the private-PR fallback path explicitly
+  (even if other factors such as a coordinating refactor also apply).
 - The affected component is a third-party provider code path where
   the correct fix belongs in the provider's own repository, not in
   `<upstream>` main.
@@ -546,8 +548,16 @@ improvement language**. They must not contain any of:
 - any reporter name tied to a security finding
 - the word *"sensitive"* in a way that points at an unmasked-credential
   bug
-- wording that would allow a reader to reconstruct the attack from
-  the PR alone
+- explicit exploitation detail — a working payload, exact reproduction
+  steps, or an exploit primitive
+
+Naming the affected component or the bug class in neutral terms (for
+example `SSRF`, `deserialization`, `path traversal`) is **allowed** — it
+is ordinary bug-fix language, as the good examples below show. Only the
+explicit security *framing* words above and reconstructable exploit
+detail are forbidden. When enumerating `forbidden_terms_found`, list
+only the framing terms above (and any reporter name / CVE id) that
+actually appear — not neutral technical descriptors of the bug.
 
 Tracker URLs (`https://github.com/<tracker>/issues/NNN`),
 `<tracker>#NNN`, and bare `#NNN` references **are** allowed — they

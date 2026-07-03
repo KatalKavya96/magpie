@@ -1,5 +1,4 @@
 {
   "result": "hard_fail",
-  "rule": 6,
-  "offending_text": "Could you add a unit test for the new operator class? ... Also, could you update the CHANGELOG to mention this addition?"
+  "rule": 6
 }

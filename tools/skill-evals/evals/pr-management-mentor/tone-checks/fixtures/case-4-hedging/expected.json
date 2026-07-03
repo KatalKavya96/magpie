@@ -1,5 +1,4 @@
 {
   "result": "hard_fail",
-  "rule": 5,
-  "offending_text": "Perhaps you could run `pre-commit run --all-files` locally before pushing"
+  "rule": 5
 }

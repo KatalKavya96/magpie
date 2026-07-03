@@ -26,7 +26,7 @@ attempt. Stop at the first failure.
 |---|---|---|
 | 11 | First line states the action | Soft-fail if the first sentence is meta ("I'm reaching out because…") rather than a question or imperative. |
 | 12 | Comment is short | Soft-fail if the BODY (excluding footer) exceeds 6 sentences. |
-| 13 | Plain English | Soft-fail if the BODY uses project-internal jargon without a doc link. |
+| 13 | Plain English | Soft-fail if the BODY names project-internal tooling or conventions (e.g. `towncrier`, `newsfragments`, `Breeze`, `.feature.rst`) without a link to project documentation. An inline explanation of the term does not substitute for the doc link — the link is required. |
 | 14 | No exclamation marks outside footer | Soft-fail if the BODY contains `!`. |
 
 ## Output
