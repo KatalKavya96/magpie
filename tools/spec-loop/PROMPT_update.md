@@ -71,9 +71,9 @@ gh pr create --web --base <integration-base> --head <sync-branch> \
 Rules:
 
 - **Edit specs only.** This beat changes `tools/spec-loop/specs/` and
-  the indexes. It must NOT change any skill, tool, or doc outside the
-  spec directory — it documents reality, it does not alter it. The
-  marker file `.last-sync` is owned by `loop.sh`; do not touch it.
+  the spec indexes. It must NOT change any skill, tool, or doc outside the
+  spec directory — it documents reality, it does not alter it. The marker
+  file `.last-sync` is owned by `loop.sh`; do not touch it.
 - Confirm with a code search before recording something as present or
   absent. Do not invent behaviour the code does not have.
 - Keep the RFCs untouched — they are a separate governance layer.

@@ -100,7 +100,7 @@ See the SECURITY notes in [`loop.sh`](loop.sh).
   item.
 - **update** — the inverse of plan: scans the code for functionality not
   yet described by a spec (someone contributed it the normal way) and
-  brings the specs back in sync, on a `sync-specs` branch.
+  brings the specs back in sync, on a `sync-specs-<timestamp>` branch.
 - **consolidate** — shrinks the plan without losing planned work (build
   auto-switches to this when the plan grows past ~500 lines).
 

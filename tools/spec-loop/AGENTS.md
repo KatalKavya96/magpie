@@ -58,8 +58,9 @@ commit.
   not sibling specs and not `IMPLEMENTATION_PLAN.md` (avoids cross-branch
   conflicts; the plan is reconciled by a later `plan` pass).
 - The **`update`** beat (specs fell behind code others contributed)
-  branches `sync-specs` and edits `specs/` **only** — it documents
-  reality, it never changes a skill, tool, or doc outside the spec dir.
+  branches `sync-specs-<timestamp>` and edits `specs/` **only** — it
+  documents reality, it never changes a skill, tool, or doc outside the
+  spec dir. The runner, not the prompt, owns `.last-sync`.
 - The runner feeds each iteration **both** the open PRs and the local
   work-item branches as in-flight work. Because the loop never pushes, a
   built-but-un-pushed item exists only as a local branch with no PR, so the

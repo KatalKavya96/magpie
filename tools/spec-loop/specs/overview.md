@@ -54,6 +54,7 @@ Each mode is an independently toggleable set of skills. Maturity mirrors
 | Adapters (Gmail / PonyMail / Jira / GitHub / mail-source / forwarder-relay / mail-archive / github-body-field / github-rollup) | [adapters.md](adapters.md) |
 | Project-agnosticism (de-ASF coupling) | [project-agnosticism.md](project-agnosticism.md) |
 | Meta & quality tooling | [meta-and-quality-tooling.md](meta-and-quality-tooling.md) |
+| Spec-loop runner (plan/build/update/consolidate + headless harnesses) | [spec-loop-runner.md](spec-loop-runner.md) |
 | Reviewer routing (experimental, Agentic Triage) | [reviewer-routing.md](reviewer-routing.md) |
 | Cross-project skill reconciler (experimental, infra) | [skill-reconciler.md](skill-reconciler.md) |
 

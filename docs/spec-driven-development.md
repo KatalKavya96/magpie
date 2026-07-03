@@ -57,7 +57,7 @@ Phases two and three are the loop, swapping prompts:
 |---|---|---|---|
 | **plan** | `loop.sh plan` | Compares specs against the code; rewrites the plan as prioritised work items. | No |
 | **build** | `loop.sh` | Implements the single highest-priority work item on its own branch; validates; commits there. | Yes, on a work-item branch |
-| **update** | `loop.sh update` | Inverse of plan: finds functionality the code has but the specs don't, and brings the specs back in sync. | Yes, on `spec/sync-specs` |
+| **update** | `loop.sh update` | Inverse of plan: finds functionality the code has but the specs don't, and brings the specs back in sync. | Yes, on `sync-specs-<timestamp>` |
 | **consolidate** | `loop.sh consolidate` | Shrinks the plan when it grows too long, without dropping planned work. | Yes, the plan only |
 
 Every beat loads the same operational context —
@@ -90,7 +90,7 @@ PR**. Before plan/build iterations, the runner snapshots open PRs so the
 plan beat does not add work already in flight and the build beat skips
 planned items that an open PR already covers. The build beat returns to
 the integration base, then carves out a
-`spec/<slug>` branch for the single work item it is about to implement. It
+bare `<slug>` branch for the single work item it is about to implement. It
 never commits feature work to the base branch, and `loop.sh` stops if it
 detects that happening. The result of a run is a fan of independent
 branches, each carrying exactly one change — each independently
@@ -109,8 +109,8 @@ confirmation. The loop honours that: it ends every iteration at a **local
 commit** and prints the exact commands for the human to run:
 
 ```bash
-git push -u origin spec/<slug>
-gh pr create --web --base main --head spec/<slug> \
+git push -u origin <slug>
+gh pr create --web --base main --head <slug> \
   --title "<subject>" --body-file <prepared-body>
 ```
 
@@ -165,7 +165,7 @@ importance:
    `--disallowedTools "Bash(git push *)" "Bash(gh *)"` when using the
    Claude harness.
 3. **Structural containment.** Every iteration works on its own
-   `spec/<slug>` branch, the loop guards against commits landing on the
+   bare `<slug>` branch, the loop guards against commits landing on the
    base branch, and the prompts forbid push/PR. The human-in-the-loop
    gate is not removed — it is *relocated* from per-tool-call to the
    push / PR / merge boundary, where the human reviews a finished branch.
@@ -190,8 +190,10 @@ or corrects the specs (a `proposed` area that now has a shipped skill
 becomes `experimental`; a drifted *Where it lives* is corrected; genuinely
 new functionality gets a new topic-named spec). It edits **only** the spec
 directory — it documents reality, it doesn't change it — and lands as one
-reviewable `spec/sync-specs` PR. Run it after a batch of normal PRs merges,
-or on a schedule.
+reviewable `sync-specs-<timestamp>` PR. The runner owns
+`tools/spec-loop/.last-sync`: it passes incremental-scope guidance into
+the prompt, then amends or creates the marker commit after the sync
+finishes. Run it after a batch of normal PRs merges, or on a schedule.
 
 ## Layout
 
@@ -211,7 +213,8 @@ tools/spec-loop/
     ├── security-issue-lifecycle.md            privacy-llm-gate.md
     ├── agent-isolation-sandbox.md             cve-tooling.md
     ├── adoption-and-setup.md                  adapters.md
-    └── meta-and-quality-tooling.md
+    ├── meta-and-quality-tooling.md            spec-loop-runner.md
+    └── security-reporting.md                  reviewer-routing.md
 ```
 
 ## Quick start
@@ -226,8 +229,8 @@ $EDITOR tools/spec-loop/IMPLEMENTATION_PLAN.md
 
 # 3. Review the branch it produced, then push + open the PR yourself.
 git log --oneline -1
-git push -u origin spec/<slug>
-gh pr create --web --base main --head spec/<slug> --title "…" --body-file …
+git push -u origin <slug>
+gh pr create --web --base main --head <slug> --title "…" --body-file …
 
 # Later: someone merged skills outside the loop — resync the specs.
 ./tools/spec-loop/loop.sh update 1

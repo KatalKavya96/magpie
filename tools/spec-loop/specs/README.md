@@ -39,6 +39,7 @@ Start with [`overview.md`](overview.md), then:
   [`adapters.md`](adapters.md),
   [`project-agnosticism.md`](project-agnosticism.md),
   [`meta-and-quality-tooling.md`](meta-and-quality-tooling.md),
+  [`spec-loop-runner.md`](spec-loop-runner.md),
   [`security-reporting.md`](security-reporting.md),
   [`reviewer-routing.md`](reviewer-routing.md),
   [`skill-reconciler.md`](skill-reconciler.md).

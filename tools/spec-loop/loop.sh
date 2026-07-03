@@ -256,7 +256,7 @@ open_pr_context() {
 # BASE SHA the specs were last synced against. Read from the working tree
 # (so a half-finished sync counts); fall back to the control branch via
 # `git show` for the case where BASE is already checked out. The update
-# prompt overwrites this file at the end of every successful sync.
+# runner amends or creates this file at the end of every successful sync.
 update_scope_context() {
     echo ""
     echo "## Incremental scope — only re-inspect what changed since the last sync"
@@ -269,8 +269,8 @@ update_scope_context() {
         prev="$(git show "$TOOLING_REF:$marker" 2>/dev/null | tr -d '[:space:]')"
     fi
     if [ -z "$prev" ]; then
-        echo "No \`$marker\` recorded — do a full inventory, then write the new"
-        echo "BASE SHA to that file as part of the sync commit."
+        echo "No \`$marker\` recorded — do a full inventory. The runner will"
+        echo "write the new BASE SHA after the sync commit finishes."
         return 0
     fi
     echo "The last sync marker (\`$marker\`) is \`$prev\`. The current BASE HEAD"
@@ -287,8 +287,8 @@ update_scope_context() {
     echo "subjects appear in the diff. If the diff is empty there is nothing to"
     echo "sync; exit without creating a branch or commit."
     echo ""
-    echo "When you finish the sync, overwrite \`$marker\` with \`$BASE_HEAD\` and"
-    echo "include it in the sync commit so the next run picks up from here."
+    echo "Do not edit \`$marker\`; the runner owns it and will amend or create"
+    echo "the marker commit after the sync finishes."
 }
 
 local_branch_context() {
