@@ -83,7 +83,7 @@ action:
 | [`pattern-catalogue.md`](pattern-catalogue.md) | Ready-to-copy examples of skills and prompts, with notes on what worked and what did not | Ready |
 | [`your-first-skill.md`](your-first-skill.md) | A step-by-step path to writing and merging your first skill | Ready |
 | [`eval-driven-development.md`](eval-driven-development.md) | How to judge whether an agent's answers are good, when the answers can change | Ready |
-| `workshops.md` | A hands-on lab: build a small skill, give it an eval suite, and run it, in about 90 minutes | Coming soon |
+| [`workshops.md`](workshops.md) | A hands-on lab: build a small skill, give it an eval suite, and run it, in about 90 minutes | Ready |
 
 Pages marked **Coming soon** are already planned and each one will appear as
 a link here when it is ready.
