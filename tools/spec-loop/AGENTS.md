@@ -82,6 +82,9 @@ commit.
 ## Commits
 
 - Imperative subject describing the user-visible change.
-- Trailer `Generated-by: Claude (Opus 4.7)` — **never** `Co-Authored-By`
-  with an agent (repo-wide `AGENTS.md` § Commit and PR conventions).
+- Trailer `Generated-by: <agent> (<model>)`, where `<agent>` and `<model>`
+  are the actual agent and model you are running as (e.g. `Claude (Opus
+  4.8)`, `OpenCode (Big Pickle)`) — do not hardcode either. **Never**
+  `Co-Authored-By` with an agent (repo-wide `AGENTS.md` § Commit and PR
+  conventions).
 - One commit per build iteration (the change + its spec `status` flip).

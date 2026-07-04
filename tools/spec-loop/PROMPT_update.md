@@ -57,7 +57,10 @@ Steps:
    added or renamed.
 7. `git add -A` then `git commit` with subject
    `docs(spec-loop): sync specs with contributed functionality` and a
-   `Generated-by: Claude (Opus 4.7)` trailer. **Do NOT touch
+   `Generated-by: <agent> (<model>)` trailer, where `<agent>` and
+   `<model>` are the actual agent and model you are running as (e.g.
+   `Claude (Opus 4.8)`, `OpenCode (Big Pickle)`) — do not hardcode
+   either. **Do NOT touch
    `tools/spec-loop/.last-sync` yourself** — `loop.sh` amends the marker
    into this commit after you finish, so the next `update` run knows to
    scope from `$BASE_HEAD`. Leaving it alone avoids merge conflicts with

@@ -62,8 +62,10 @@ Steps:
    update **only that spec's** frontmatter/Known-gaps, and never
    `IMPLEMENTATION_PLAN.md`.)
 8. `git add -A` then `git commit` with an imperative subject and a
-   `Generated-by: Claude (Opus 4.7)` trailer. **Never** add a
-   `Co-Authored-By:` trailer for an agent.
+   `Generated-by: <agent> (<model>)` trailer, where `<agent>` and
+   `<model>` are the actual agent and model you are running as (e.g.
+   `Claude (Opus 4.8)`, `OpenCode (Big Pickle)`) — do not hardcode
+   either. **Never** add a `Co-Authored-By:` trailer for an agent.
 
 Then STOP. Do NOT push and do NOT open a PR — `git push` and
 `gh pr create` are the human's step (they are in `.claude/settings.json`

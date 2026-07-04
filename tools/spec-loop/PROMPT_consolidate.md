@@ -18,7 +18,10 @@ it without losing planned work.
    the number.
 6. `git add -A` then
    `git commit -m "chore(spec-loop): consolidate implementation plan"`
-   with a `Generated-by: Claude (Opus 4.7)` trailer.
+   with a `Generated-by: <agent> (<model>)` trailer, where `<agent>` and
+   `<model>` are the actual agent and model you are running as (e.g.
+   `Claude (Opus 4.8)`, `OpenCode (Big Pickle)`) — do not hardcode
+   either.
 
 Rules:
 
