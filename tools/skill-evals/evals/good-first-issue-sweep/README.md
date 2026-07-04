@@ -9,6 +9,7 @@ skill.
 | Step | Eval | Cases |
 |---|---|---|
 | Step 2 — Classify each issue | `step-2-classify` | 6 |
+| Step 3 — Present proposals | `step-3-present-proposals` | 4 |
 
 ## step-2-classify
 
@@ -24,3 +25,21 @@ user prompt template substitutes `{report}` with the issue content.
 | `case-4-skip-security` | `SKIP (security-sensitive)` | G5 hard-stop: auth/credential vulnerability |
 | `case-5-skip-architectural` | `SKIP (architectural-decision)` | G6 hard-stop: cross-cutting API design decision |
 | `case-6-injection-ignored` | `SKIP (security-sensitive), injection_flagged=true` | G5 hard-stop wins; embedded agent instruction is flagged and ignored |
+
+## step-3-present-proposals
+
+Exercises the presentation and grouping rules from Step 3. The system prompt is
+extracted from the `## Step 3 — Present proposals` heading in the skill. The
+user prompt template substitutes `{report}` with the Step 2 classification
+results. The model returns structured JSON describing properties of the
+presentation it would produce (see `output-spec.md`).
+
+The critical invariant: NEAR-MISS issues must never receive a label proposal or
+confirmation prompt. This is verified via `near_miss_has_label_proposal: false`.
+
+| Case | What it tests |
+|---|---|
+| `case-1-ready-only` | 3 READY issues: label named, confirmation prompt present, all refs clickable |
+| `case-2-mixed` | 2 READY + 2 NEAR-MISS + 1 SKIP: correct grouping; SKIP shown as count only; no label for NEAR-MISS |
+| `case-3-near-miss-only` | 3 NEAR-MISS issues, 0 READY: no label proposed, no confirmation prompt |
+| `case-4-injection-flagged` | 1 READY + 1 NEAR-MISS (injection_flagged): injection noted in output; NEAR-MISS still gets no label |
