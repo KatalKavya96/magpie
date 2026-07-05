@@ -21,9 +21,10 @@
 
 # English as a programming language
 
-By now you have worked with an agent, chosen a model, written a skill, tested it
-with evals, and let it run on its own. This page steps back to name the idea
-underneath all of it, the mental shift that makes the whole craft click.
+By now you have worked with an agent, chosen a model, written a skill, learned to
+keep it safe, tested it with evals, and let it run on its own. This page steps
+back to name the idea underneath all of it, the mental shift that makes the whole
+craft click.
 
 Here it is: when you build with agents, **the words you write are the program**.
 The English (or any natural language) in your prompts and skills is not

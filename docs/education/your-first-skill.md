@@ -375,13 +375,17 @@ skill you cannot.
 ## Where to go next
 
 This is **step 4** in the [learning progression](README.md). The natural next
-step is to make its behaviour testable:
+step is to make the skill safe to run against outside text:
 
-- **[Eval-driven development](eval-driven-development.md)** — step 5: how to judge
+- **[Writing safe skills](writing-safe-skills.md)** — step 5: the authoring
+  patterns that hold the data-not-instructions and sandbox principles in every
+  skill you write. Covers the injection-flag idiom, the privacy gate, and the
+  draft-before-post shape.
+- **[Eval-driven development](eval-driven-development.md)** — step 6: how to judge
   output that can vary, with worked examples from real Magpie skills. Your skill
-  is not finished until it has an eval suite, so this is the immediate next read.
-- **[Agentic and autonomous work](agentic-work.md)** — step 6: once a skill is
-  written and tested, this is how you let it run without watching every step.
+  is not finished until it has an eval suite, so read step 5 first and then this.
+- **[Agentic and autonomous work](agentic-work.md)** — step 7: once a skill is
+  written, tested, and safe, this is how you let it run without watching every step.
 
 Supporting references for skill-writing:
 

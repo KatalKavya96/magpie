@@ -22,9 +22,9 @@
 
 This is the last page of the progression, and it turns everything before it into
 action. You now know what an agent is, how to work with one, how to pick a model,
-how to write a skill and test it with evals, how autonomy works, and why the
-words you write *are* the program. This page is about giving that work back,
-contributing to Magpie itself.
+how to write a skill, keep it safe, and test it with evals, how autonomy works,
+and why the words you write *are* the program. This page is about giving that
+work back, contributing to Magpie itself.
 
 Magpie is the open, project-agnostic framework for agent-assisted maintainership.
 It grows the way any healthy open-source project grows: from people who used it,
