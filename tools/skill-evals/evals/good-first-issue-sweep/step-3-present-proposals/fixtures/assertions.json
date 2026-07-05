@@ -1,0 +1,6 @@
+{
+  "has_label_confirmation_prompt": {
+    "type": "field_true",
+    "field": "has_label_confirmation_prompt"
+  }
+}
