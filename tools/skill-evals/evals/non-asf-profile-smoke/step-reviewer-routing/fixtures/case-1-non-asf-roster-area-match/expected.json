@@ -1,1 +1,9 @@
-{"primary_reviewer": "mateo-stream", "no_eligible_reviewer": false, "signals_shown": true, "load_signal_shown": true, "injection_flagged": false, "roster_bounded": true, "reason": "mateo-stream has area match (component:connectors, velox/connectors/) and highest git familiarity (6 path-author hits); open-review load 1 is well within max_reviews 5. priya-velox and yuki-velox have no connectors area match, so mateo-stream is the only area-eligible member. backup_reviewer is intentionally not asserted here: it is optional per Step 4, and roster_bounded already guards against any out-of-roster handle."}
+{
+  "has_mateo_primary": true,
+  "has_area_match_rationale": true,
+  "no_eligible_reviewer": false,
+  "signals_shown": true,
+  "load_signal_shown": true,
+  "injection_flagged": false,
+  "roster_bounded": true
+}

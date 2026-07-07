@@ -1,0 +1,42 @@
+{
+  "has_body_python_block": {
+    "type": "regex",
+    "field": "blocks",
+    "pattern": "\\{[^{}]*(\"location\"\\s*:\\s*\"body\"[^{}]*\"language\"\\s*:\\s*\"python\"|\"language\"\\s*:\\s*\"python\"[^{}]*\"location\"\\s*:\\s*\"body\")[^{}]*\\}",
+    "flags": "i"
+  },
+  "has_body_5_lines": {
+    "type": "regex",
+    "field": "blocks",
+    "pattern": "\\{[^{}]*(\"location\"\\s*:\\s*\"body\"[^{}]*\"line_count\"\\s*:\\s*5\\b|\"line_count\"\\s*:\\s*5\\b[^{}]*\"location\"\\s*:\\s*\"body\")[^{}]*\\}",
+    "flags": "i"
+  },
+  "has_runtime_airflow_python": {
+    "type": "regex",
+    "field": "reporter_env.runtime_version",
+    "pattern": "Airflow\\s*2\\.9\\.1.*Python\\s*3\\.11",
+    "flags": "i"
+  },
+  "has_os_ubuntu": {
+    "type": "regex",
+    "field": "reporter_env.os",
+    "pattern": "Ubuntu\\s*22\\.04",
+    "flags": "i"
+  },
+  "has_comment1_python_block": {
+    "type": "regex",
+    "field": "blocks",
+    "pattern": "\\{[^{}]*(\"location\"\\s*:\\s*\"comment-1\"[^{}]*\"language\"\\s*:\\s*\"python\"|\"language\"\\s*:\\s*\"python\"[^{}]*\"location\"\\s*:\\s*\"comment-1\")[^{}]*\\}",
+    "flags": "i"
+  },
+  "has_comment1_2_lines": {
+    "type": "regex",
+    "field": "blocks",
+    "pattern": "\\{[^{}]*(\"location\"\\s*:\\s*\"comment-1\"[^{}]*\"line_count\"\\s*:\\s*2\\b|\"line_count\"\\s*:\\s*2\\b[^{}]*\"location\"\\s*:\\s*\"comment-1\")[^{}]*\\}",
+    "flags": "i"
+  },
+  "has_no_reported_env": {
+    "type": "empty",
+    "field": "reporter_env.runtime_version"
+  }
+}

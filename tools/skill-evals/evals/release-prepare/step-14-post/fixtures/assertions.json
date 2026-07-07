@@ -28,5 +28,26 @@
   "has_proposed_only": {
     "field": "proposed",
     "type": "field_true"
+  },
+  "has_scope_files": {
+    "field": "files_in_scope",
+    "type": "contains_all",
+    "substrings": [
+      "setup.cfg",
+      "airflow/__init__.py"
+    ]
+  },
+  "has_no_out_of_scope_files": {
+    "field": "files_in_scope",
+    "type": "regex",
+    "pattern": "(?i)changelog|license|notice",
+    "flags": "i",
+    "negate": true
+  },
+  "has_changelog_scope_violation": {
+    "field": "scope_violations",
+    "type": "regex",
+    "pattern": "(?i)changelog",
+    "flags": "i"
   }
 }

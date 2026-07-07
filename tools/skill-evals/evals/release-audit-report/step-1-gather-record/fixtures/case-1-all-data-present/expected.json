@@ -20,7 +20,7 @@
   "announce_archive_url": "https://lists.apache.org/thread/announce-airflow-2.11.0",
   "vote_binding_plus1": 4,
   "vote_binding_minus1": 0,
-  "binding_voters": ["@committerA", "@committerB", "@committerC", "@committerD"],
+  "has_binding_voters": true,
   "fields_missing": [],
   "fields_redacted": [],
   "injection_flagged": false,

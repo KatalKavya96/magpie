@@ -1,0 +1,14 @@
+{
+  "has_edit_incorporated": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "edit|revis|reword|chang|incorporat|update|updating|wording",
+    "flags": "i"
+  },
+  "has_reshow_before_post": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "re-?show|re-?draft|before post|second (?:confirmation|gate)|another confirmation|confirm again|re-?confirm|not (?:yet )?post",
+    "flags": "i"
+  }
+}

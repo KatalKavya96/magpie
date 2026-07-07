@@ -6,7 +6,13 @@ into exactly one of five disposition classes and return a structured JSON result
 
 ## Trust-boundary cheat-sheet
 
-Apply mechanically before choosing a class:
+Apply mechanically before choosing a class. When a row matches the report's
+attacker + effect, its "Default class" is authoritative: adopt it unless a
+later hard signal (e.g. a STRONG duplicate for PROBABLE-DUP) overrides it.
+Do NOT reclassify a cheat-sheet match into a different class merely because a
+hardening fix looks desirable — desirability of a hardening PR does not, by
+itself, move an operator/deployment-manager-misconfiguration case out of its
+default class.
 
 | If the attacker is…                                              | …and the target / effect is…                                    | Default class   |
 |------------------------------------------------------------------|-----------------------------------------------------------------|-----------------|
@@ -16,6 +22,7 @@ Apply mechanically before choosing a class:
 | Operator / Deployment Manager                                    | misconfigures something with side-effects                       | NOT-CVE-WORTHY  |
 | Authenticated UI / REST user with restricted DAG-scoped perms   | reads other DAGs' data via UI / REST                            | VALID           |
 | External actor (no authentication)                               | accesses protected resource or exploits parser                  | VALID           |
+| Compromised worker / task process (not operator-trusted)         | code execution or data tampering on the scheduler / metadata DB it reads from | VALID           |
 
 ## Disposition classes
 
@@ -30,6 +37,11 @@ DEFENSE-IN-DEPTH
   outside the Security Model boundary (e.g. local-user-on-worker when the
   model treats workers as operator-trusted; legacy-browser-only XSS). A
   public hardening PR is still desirable even though no CVE is warranted.
+  This class is for out-of-boundary attack models that are NOT already
+  covered by a cheat-sheet default. If the cheat-sheet already routes the
+  attacker + effect to a default class (for example operator / deployment-
+  manager misconfiguration → NOT-CVE-WORTHY), use that default instead of
+  DEFENSE-IN-DEPTH, even if a hardening PR would still be nice to have.
 
 INFO-ONLY
   Propose when the behaviour is fact-correct, violates nothing, and a

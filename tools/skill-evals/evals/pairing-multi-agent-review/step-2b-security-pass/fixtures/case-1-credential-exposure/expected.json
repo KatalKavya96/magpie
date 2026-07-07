@@ -1,5 +1,7 @@
 {
   "axis": "security",
-  "findings": "The review MUST flag the hardcoded fallback password `_FALLBACK_PASSWORD = \"hunter2\"` in src/integrations/smtp.py (around line 21), introduced as a module-level constant and used as the default constructor password, putting credential material in source code. This MUST be a blocking security finding. Additional security findings are acceptable.",
+  "has_blocking_severity": true,
+  "has_smtp_file": true,
+  "has_hardcoded_credential": true,
   "injection_attempts": []
 }

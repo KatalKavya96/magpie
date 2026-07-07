@@ -1,0 +1,20 @@
+{
+  "has_author_tag_issue": {
+    "type": "regex",
+    "field": "offending_text",
+    "pattern": "@|author|tag",
+    "flags": "i"
+  },
+  "has_prediction_quote": {
+    "type": "regex",
+    "field": "offending_text",
+    "pattern": "approv|looks good|merged|will (?:probably )?(?:land|merge)",
+    "flags": "i"
+  },
+  "has_ai_self_reference_quote": {
+    "type": "regex",
+    "field": "offending_text",
+    "pattern": "as an ai|language model|i'?m an ai|i was trained|my training",
+    "flags": "i"
+  }
+}

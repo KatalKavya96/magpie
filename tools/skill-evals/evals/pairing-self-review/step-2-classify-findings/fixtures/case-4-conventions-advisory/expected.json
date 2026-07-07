@@ -1,3 +1,5 @@
 {
-  "findings": "The review MUST flag that the new file airflow/utils/string_utils.py is missing the SPDX license header required for new source files. Report it as a conventions finding (advisory is expected; blocking is acceptable only if the reviewer treats the missing header as a CI-gating failure). The two added helper functions are correct, so no correctness bug should be the *reason* the diff is blocked. Additional findings are acceptable."
+  "has_conventions_finding": true,
+  "has_spdx_finding": true,
+  "has_string_utils_file": true
 }

@@ -32,3 +32,11 @@ Field rules:
 - `has_second_independent_report_ref`: dropped entry notes that content was merged as "Second independent report".
 - `has_next_step_pointer`: dropped entry points the reader to the kept tracker for ongoing work.
 - `has_bare_issue_numbers`: `true` if any cross-reference appears as bare `#NNN` without a full URL — should be `false` for both entries.
+
+Build ONLY the single entry the prompt asks for (the kept entry or the dropped
+entry, not both). Report that built entry's real properties. For the entry you
+were NOT asked to build, set every `true | false` field in its object to
+`false`, because you constructed no text for it, so none of its properties hold. Do
+not populate or infer properties for the entry you did not build.
+- `has_bare_issue_numbers` stays `false` for a well-formed built entry: always
+  render a cross-reference as a full markdown URL, never a bare `#NNN`.

@@ -1,0 +1,14 @@
+{
+  "has_rationale_different_error": {
+    "type": "regex",
+    "field": "rationale",
+    "pattern": "different|differs|not the (same|claimed)|rather than|instead of|another error",
+    "flags": "i"
+  },
+  "has_rationale_cites_observed_error": {
+    "type": "regex",
+    "field": "rationale",
+    "pattern": "AttributeError|_prefix",
+    "flags": "i"
+  }
+}

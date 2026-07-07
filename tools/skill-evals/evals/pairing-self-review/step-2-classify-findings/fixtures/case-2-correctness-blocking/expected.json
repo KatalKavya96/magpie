@@ -1,3 +1,7 @@
 {
-  "findings": "The review MUST flag the swallowed ConnectionError in airflow/providers/http/hooks/http.py (around lines 94-101): when the request raises ConnectionError it is logged but not re-raised or returned, so `response` is left unbound and `return response` raises NameError on the failure path. This must be reported as a blocking correctness finding. Additional findings on any axis are acceptable, but this finding must be present and must not be downgraded below blocking."
+  "has_correctness_finding": true,
+  "has_blocking_severity": true,
+  "has_http_hook_file": true,
+  "has_unbound_response_bug": true,
+  "empty_diff": false
 }

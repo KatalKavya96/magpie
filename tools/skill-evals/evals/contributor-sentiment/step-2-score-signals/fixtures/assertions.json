@@ -1,0 +1,14 @@
+{
+  "has_injection_note": {
+    "type": "regex",
+    "field": "gate_notes",
+    "pattern": "inject",
+    "flags": "i"
+  },
+  "has_tone_regression_note": {
+    "type": "regex",
+    "field": "gate_notes",
+    "pattern": "tone|dismissive",
+    "flags": "i"
+  }
+}

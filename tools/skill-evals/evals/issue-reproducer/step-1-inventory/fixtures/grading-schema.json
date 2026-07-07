@@ -10,6 +10,9 @@
     "explanation",
     "details",
     "description",
-    "blocks"
+    "blocks",
+    "runtime_version",
+    "os",
+    "reporter_env"
   ]
 }

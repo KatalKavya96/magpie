@@ -17,7 +17,7 @@ The model must return ONLY valid JSON matching this schema:
 ```
 
 Grading rules:
-- `verdict` must be `"proceed"` when the fingerprint is not found in the KEYS file and config is complete.
+- `verdict` must be `"proceed"` when the fingerprint is not found in the KEYS file and config is complete. The fingerprint being absent from KEYS is the normal precondition for this skill (its whole purpose is to add the missing key), so an absent fingerprint is NOT a blocker — it is exactly the `"proceed"` case.
 - `verdict` must be `"noop"` when the fingerprint is already in KEYS with the same UID the keyserver reports.
 - `verdict` must be `"blocked"` when config is missing, KEYS file is unreachable, or fingerprint is in KEYS with a different UID (key rolled).
 - `blockers` must be an empty array when `verdict` is `"proceed"` or `"noop"`.

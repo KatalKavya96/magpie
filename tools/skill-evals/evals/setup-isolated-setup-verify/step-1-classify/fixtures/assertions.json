@@ -1,0 +1,8 @@
+{
+  "has_sandbox_disabled_evidence": {
+    "type": "regex",
+    "field": "checks",
+    "pattern": "sandbox[^\"]*(false|disabled)|(disabled|not enabled)[^\"]*sandbox",
+    "flags": "i"
+  }
+}

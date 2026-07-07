@@ -12,6 +12,8 @@ The user has been shown a numbered list of triage proposals. Parse the user's re
 - `<N>:upgrade <CLASS>` — change the classification for item N
 - `none` or `cancel` — bail entirely
 
+An item flagged with `:edit`, `:downgrade`, or `:upgrade` is NOT included in `post_items`; it appears only in `edits` (or `reclassifications`) because it needs a re-draft. When a reply combines such a flag with `all` or `post all`, `post_items` lists every OTHER item, and the flagged items appear solely in their respective lists.
+
 ## Output
 
 Return ONLY valid JSON with this structure:

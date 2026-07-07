@@ -1,0 +1,35 @@
+{
+  "has_context_line_present": {
+    "type": "regex", "field": "sections_present", "pattern": "context_line"
+  },
+  "has_hero_cards_present": {
+    "type": "regex", "field": "sections_present", "pattern": "hero_cards"
+  },
+  "has_recommendations_present": {
+    "type": "regex", "field": "sections_present", "pattern": "recommendations"
+  },
+  "has_age_distribution_present": {
+    "type": "regex", "field": "sections_present", "pattern": "age_distribution"
+  },
+  "has_triage_funnel_present": {
+    "type": "regex", "field": "sections_present", "pattern": "triage_funnel"
+  },
+  "has_area_pressure_present": {
+    "type": "regex", "field": "sections_present", "pattern": "area_pressure"
+  },
+  "has_staleness_panel_present": {
+    "type": "regex", "field": "sections_present", "pattern": "staleness_panel"
+  },
+  "has_detailed_table_present": {
+    "type": "regex", "field": "sections_present", "pattern": "detailed_table"
+  },
+  "has_legend_present": {
+    "type": "regex", "field": "sections_present", "pattern": "legend"
+  },
+  "has_no_stubbed_sections": {
+    "type": "empty", "field": "sections_stubbed"
+  },
+  "has_no_missing_sections": {
+    "type": "empty", "field": "sections_missing"
+  }
+}

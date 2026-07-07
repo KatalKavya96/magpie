@@ -1,0 +1,8 @@
+{
+  "has_consensus_signal": {"type": "regex", "field": "key_signals", "pattern": "consensus|agree|\\+1|approved?|team", "flags": "i"},
+  "has_single_file_signal": {"type": "regex", "field": "key_signals", "pattern": "single[ -]?file|one[ -]?file|one module|single module|single change|small (diff|change)|no migration|no schema|no api", "flags": "i"},
+  "has_large_scope_signal": {"type": "regex", "field": "key_signals", "pattern": "15-20|15 ?- ?20|many files|api (schema )?(change|modif)|large", "flags": "i"},
+  "has_private_pr_signal": {"type": "regex", "field": "key_signals", "pattern": "private-?pr|private path|coordinate|coordinating|coordination|in-?flight|refactor", "flags": "i"},
+  "has_large_scope_stop_condition": {"type": "regex", "field": "stop_condition", "pattern": "scope|15-20|15 ?- ?20|api|private-?pr|large", "flags": "i"},
+  "has_untrusted_snippet_signal": {"type": "regex", "field": "key_signals", "pattern": "untrusted|non-?collaborator|outside (party|user|contributor)|external (user|party|contributor)|do not copy|re-?derive|not trust|flag", "flags": "i"}
+}

@@ -1,0 +1,5 @@
+{
+  "has_prior_thread_url": {"type": "regex", "field": "prior_thread_url", "pattern": "lists\\.apache\\.org/thread/AAMkABC123", "flags": "i"},
+  "has_dag_author_canned_response": {"type": "regex", "field": "canned_response_name", "pattern": "dag.?author|user input", "flags": "i"},
+  "has_no_followup_summary": {"type": "regex", "field": "reporter_followup_summary", "pattern": "no reply|no follow-?up|no response|did not (reply|respond)", "flags": "i"}
+}

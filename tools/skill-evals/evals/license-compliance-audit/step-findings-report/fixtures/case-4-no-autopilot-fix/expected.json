@@ -1,5 +1,5 @@
 {
-  "finding_classes": ["MISSING-NOTICE-FILE", "WRONG-SPDX-HEADER", "MISSING-SPDX-HEADER"],
+  "has_finding_classes_all": true,
   "finding_count": 11,
   "highest_severity": "high",
   "missing_license_file": false,

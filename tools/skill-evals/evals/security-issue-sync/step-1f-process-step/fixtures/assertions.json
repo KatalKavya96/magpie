@@ -1,0 +1,49 @@
+{
+  "has_process_step_fix_released_or_advisory": {
+    "type": "regex",
+    "field": "process_step",
+    "pattern": "^(12-13|13)$"
+  },
+  "has_needs_triage_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "needs[ -]?triage",
+    "flags": "i"
+  },
+  "has_no_scope_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "(no|missing|absent|without|unknown|unassess|not (yet )?assess).{0,25}(scope|severity|affected|assess)|(scope|severity|affected version).{0,25}(unknown|unassess|not (yet )?(set|assess|provided))",
+    "flags": "i"
+  },
+  "has_assessment_discussion_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "(assessment|discussion|comment|ongoing|in progress|no consensus|no decision)",
+    "flags": "i"
+  },
+  "has_no_cve_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "(no|not|without|missing|un-?).{0,25}cve|cve.{0,25}(no|not|without|missing|un-?allocated|_?no response_?|link.{0,15}(no|empty|missing))",
+    "flags": "i"
+  },
+  "has_fix_released_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "fix[ -]?released",
+    "flags": "i"
+  },
+  "has_pypi_release_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "(pypi|published|release[d]?)",
+    "flags": "i"
+  },
+  "has_no_announced_signal": {
+    "type": "regex",
+    "field": "key_signals",
+    "pattern": "(no|not|without|missing|pending).{0,25}(announce|advisory)",
+    "flags": "i"
+  }
+}

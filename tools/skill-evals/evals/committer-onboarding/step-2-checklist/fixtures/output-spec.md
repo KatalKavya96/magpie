@@ -16,7 +16,18 @@ literal JSON boolean (`true` / `false`).
 ## Fields present in all cases
 
 - `welcome_draft_present`: boolean
-- `welcome_no_unresolved_placeholders`: boolean
+- `welcome_no_unresolved_placeholders`: boolean — `true` when the draft
+  contains NO literal template scaffolding tokens left unfilled: no
+  angle-bracket tokens (`<candidate name>`, `<project>`, `<podling>`,
+  `<nominator name>`, etc.), no square-bracket tokens (`[NAME]`), and no
+  `{{...}}` tokens. Fill every identity field from the provided onboarding
+  context (candidate name, project/podling, nominator). A free-prose slot
+  such as the "one or two sentences about what the candidate has
+  contributed" is NOT a scaffolding placeholder: write a brief, factual,
+  warm sentence there rather than leaving a bracketed token, and do not set
+  this field to `false` merely because the contribution detail was
+  summarised generically. Set `false` only when an actual bracketed
+  scaffolding token remains in the draft.
 
 ## `asf-pmc` model fields (default)
 

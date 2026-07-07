@@ -11,7 +11,7 @@ the decision table.
 |---|---|---|
 | F1 | `authorAssociation` ∈ {OWNER, MEMBER, COLLABORATOR} | skip |
 | F2 | Author login is `dependabot`, `dependabot[bot]`, `renovate[bot]`, `github-actions`, `github-actions[bot]`, or ends with `[bot]` | skip |
-| F3 | `isDraft == true` AND any activity within the last 14 days (updated_at or last commit < 14 days ago) | skip |
+| F3 | `isDraft == true` AND the PR's own authoring activity is recent — a commit within the last 14 days (last commit < 14 days ago), or an author-side update to the PR within 14 days. F3 is about the draft being freshly worked by its author; a substantive comment left by a collaborator does NOT count as F3 activity (that signal is F6, below), even though such a comment may bump `updated_at`. | skip |
 | F4 | Labels contain `ready for maintainer review` AND `statusCheckRollup == SUCCESS` AND `mergeable != CONFLICTING` AND `unresolved_threads == 0`. Any regression (CI red, new conflict, or new unresolved thread after label-add) bypasses this filter. | skip |
 | F5a | Most recent comment from a COLLABORATOR/MEMBER/OWNER was posted AFTER the last commit AND within 72 hours of now | skip |
 | F5b | Most recent collaborator comment @-mentions one or more logins (other than the PR author) AND none of those mentioned logins have posted on the PR after that comment | skip |

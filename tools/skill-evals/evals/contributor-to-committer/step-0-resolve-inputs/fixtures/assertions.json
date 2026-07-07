@@ -1,0 +1,8 @@
+{
+  "has_rejection_reason_invalid_login": {
+    "type": "regex",
+    "field": "rejection_reason",
+    "pattern": "pattern|invalid|not.{0,10}valid|malformed|illegal|does not match|disallowed|unsafe character|not a valid",
+    "flags": "i"
+  }
+}

@@ -1,5 +1,5 @@
 {
   "result": "hard_fail",
   "rule": 3,
-  "offending_text": "As an AI language model, I can help clarify the contributing process."
+  "has_ai_self_reference_quote": true
 }

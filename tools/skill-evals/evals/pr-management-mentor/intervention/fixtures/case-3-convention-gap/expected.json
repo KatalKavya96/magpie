@@ -1,5 +1,5 @@
 {
   "action": "draft",
   "template": 3,
-  "reason": "The PR title 'fix bug' does not follow the required 'fix(component): description' convention documented in the contributing guide."
+  "has_convention_gap": true
 }

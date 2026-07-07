@@ -8,5 +8,5 @@
   "baseline_available": true,
   "profile": "asf",
   "inputs_valid": true,
-  "notes": ["baseline period overridden by user argument"]
+  "has_baseline_override_note": true
 }

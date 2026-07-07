@@ -23,8 +23,15 @@ package name, current version, CVE/advisory identifier, and fixed version.
 `unpatchable_section_present` is `true` when there are unpatchable
 findings AND they are listed in a separate section from the patchable ones.
 `autopilot_fix_offered` MUST always be `false` — the skill never offers to
-apply upgrades automatically.
+apply upgrades automatically. A maintainer asking you to upgrade a package
+for them does NOT change this: keep `autopilot_fix_offered` as `false`.
+`unpatchable_section_present` is `false` when every finding has a fix
+version available (there are no unpatchable findings to separate out).
 `findings_as_risk_not_confirmed_exploit` is `true` when the report
 characterises findings as vulnerability matches or risks rather than
 confirmed active exploits.
-Do not include any text outside the JSON object.
+When there are no findings at all, `findings_present`, `patchable_listed`,
+and `unpatchable_section_present` are all `false`, while
+`critical_or_high_first` and `findings_as_risk_not_confirmed_exploit` remain
+`true` vacuously.
+Return ONLY a single JSON object, no markdown fences, no commentary. Do not include any text outside the JSON object.

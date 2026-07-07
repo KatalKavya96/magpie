@@ -1,5 +1,5 @@
 {
   "result": "hard_fail",
   "rule": 10,
-  "offending_text": "this should be approved quickly given the CI is otherwise green"
+  "has_prediction_quote": true
 }

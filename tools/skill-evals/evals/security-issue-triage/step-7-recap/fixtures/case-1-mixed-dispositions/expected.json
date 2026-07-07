@@ -6,17 +6,7 @@
     "NOT_CVE_WORTHY": 1,
     "PROBABLE_DUP": 1
   },
-  "trackers": [
-    {"number": 212, "class": "VALID", "comment_url": "https://github.com/example-s/example-s/issues/212#issuecomment-1001"},
-    {"number": 215, "class": "NOT-CVE-WORTHY", "comment_url": "https://github.com/example-s/example-s/issues/215#issuecomment-1002"},
-    {"number": 218, "class": "INFO-ONLY", "comment_url": "https://github.com/example-s/example-s/issues/218#issuecomment-1003"},
-    {"number": 220, "class": "PROBABLE-DUP", "comment_url": "https://github.com/example-s/example-s/issues/220#issuecomment-1004"}
-  ],
-  "next_steps": [
-    "/security-cve-allocate 212",
-    "/security-issue-invalidate 215",
-    "/security-issue-invalidate 218",
-    "/security-issue-deduplicate 220 212"
-  ],
+  "has_trackers": true,
+  "has_next_steps": true,
   "sync_note": true
 }

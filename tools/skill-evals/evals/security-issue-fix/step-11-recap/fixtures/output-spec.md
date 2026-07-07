@@ -14,3 +14,8 @@ Return a JSON object with these boolean fields asserting the structural properti
   "has_bare_issue_numbers": <bool — recap contains a bare #NNN reference without a full URL — should be false>
 }
 ```
+
+Every field above MUST always be present in the returned object; never omit
+a field. In particular, `has_next_step` MUST always be present and is `true`
+whenever the recap ends with the next-step line (wait for review; re-run
+security-issue-sync after the PR merges).

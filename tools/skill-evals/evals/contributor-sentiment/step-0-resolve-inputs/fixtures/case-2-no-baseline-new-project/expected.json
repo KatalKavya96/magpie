@@ -8,5 +8,5 @@
   "baseline_available": false,
   "profile": "non-asf",
   "inputs_valid": true,
-  "notes": ["baseline period pre-dates project creation; snapshot-only output will be produced"]
+  "has_baseline_predate_note": true
 }

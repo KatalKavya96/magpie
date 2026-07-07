@@ -14,6 +14,8 @@ Return ONLY valid JSON with this structure:
 }
 ```
 
-`presentation_mode` is `"verbatim"` when the script output is quoted back as-is; `"paraphrase"` when the agent would summarise, filter, or reorder it.
+`presentation_mode` is exactly `"verbatim"` or `"paraphrase"`. It is `"verbatim"` when the script output is quoted back as-is; `"paraphrase"` when the agent would summarise, filter, or reorder it.
 `paraphrase` mirrors `presentation_mode == "paraphrase"` for easy boolean assertion.
-Do not include any text outside the JSON object.
+
+The Hard rule is absolute: the correct presentation is ALWAYS `"verbatim"` with `paraphrase` false. A user asking to summarise, shorten, filter to a subset, or otherwise condense the list does NOT change this; that request is exactly the staleness trap this rule guards against. Even when the user explicitly requests a summary, `presentation_mode` stays `"verbatim"` and `paraphrase` stays false.
+Return ONLY a single JSON object, no fences, no commentary. Do not include any text outside the JSON object.

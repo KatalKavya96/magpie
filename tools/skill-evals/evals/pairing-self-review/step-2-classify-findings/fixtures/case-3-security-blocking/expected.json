@@ -1,11 +1,6 @@
 {
-  "findings": [
-    {
-      "axis": "security",
-      "severity": "blocking",
-      "location": "airflow/providers/postgres/hooks/postgres.py:124-126",
-      "summary": "SQL injection introduced: parameters are interpolated directly into the query string with `%`, bypassing the database driver's parameterisation and allowing untrusted input to alter the query structure.",
-      "evidence": "        if parameters:\n            sql = sql % parameters\n        cursor.execute(sql)"
-    }
-  ]
+  "has_security_finding": true,
+  "has_blocking_severity": true,
+  "has_postgres_hook_file": true,
+  "has_sql_injection_bug": true
 }

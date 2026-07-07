@@ -1,1 +1,5 @@
-{"branch_name": "security-fix-pickle-deserialization", "valid": false, "forbidden_pattern_found": "security-fix", "recommendation": "fix-pickle-deserialize-type-validation"}
+{
+  "valid": false,
+  "has_security_fix_forbidden_pattern": true,
+  "has_clean_recommendation": true
+}

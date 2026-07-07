@@ -1,0 +1,14 @@
+{
+  "has_missing_repro": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "reproduc|repro|minimal example|stack ?trace|no (?:example|steps)|without (?:a )?(?:reproduction|example)",
+    "flags": "i"
+  },
+  "has_convention_gap": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "convention|PR title|title (?:format|prefix)|contributing (?:guide|doc)|required format|does not follow|doesn't follow",
+    "flags": "i"
+  }
+}

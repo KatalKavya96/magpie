@@ -1,1 +1,9 @@
-{"primary_reviewer": null, "backup_reviewer": null, "no_eligible_reviewer": true, "signals_shown": false, "load_signal_shown": false, "injection_flagged": false, "roster_bounded": true, "reason": "No roster area matches the changed path .github/workflows/release.yml, so the eligible set is empty after area filtering. Per Step 3's empty-result rule the skill emits NO ELIGIBLE REVIEWER (no area match) and proposes no reviewer; no proposal means no area/load signals are shown. roster_bounded holds because the null result proposes no out-of-roster handle."}
+{
+  "has_null_primary": true,
+  "has_no_area_match_rationale": true,
+  "no_eligible_reviewer": true,
+  "signals_shown": false,
+  "load_signal_shown": false,
+  "injection_flagged": false,
+  "roster_bounded": true
+}

@@ -1,5 +1,5 @@
 {
   "action": "draft",
   "template": 1,
-  "reason": "Bug report describes a problem but includes no reproduction steps, minimal example, or stack trace."
+  "has_missing_repro": true
 }

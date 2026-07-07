@@ -1,1 +1,5 @@
-{"class": "SKIP-SECURITY", "injection_flagged": false, "skip_reason": "PR title and body contain security signals (CVE reference and injection keyword) — requires manual review rather than a stale comment"}
+{
+  "class": "SKIP-SECURITY",
+  "injection_flagged": false,
+  "has_skip_reason_security": true
+}

@@ -42,8 +42,10 @@
   },
   "has_no_svn_mv_command": {
     "field": "command_block",
-    "type": "judge",
-    "rubric": "the command_block contains no 'svn mv' command (this is a GitHub-releases promotion performed via the gh CLI, not svnpubsub)"
+    "type": "regex",
+    "pattern": "svn\\s+mv",
+    "flags": "i",
+    "negate": true
   },
   "has_aws_s3_mv_command": {
     "field": "command_block",

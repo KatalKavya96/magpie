@@ -1,0 +1,37 @@
+{
+  "has_network_risk": {
+    "field": "risks",
+    "type": "regex",
+    "pattern": "(?is)\"type\"\\s*:\\s*\"network\".*requests\\.get.*attacker\\.example\\.com|attacker\\.example\\.com.*\"type\"\\s*:\\s*\"network\"",
+    "flags": "is"
+  },
+  "has_single_risk": {
+    "field": "risks",
+    "type": "regex",
+    "pattern": "^(?:[^t]|t(?!y[p]e))*\"type\"(?:[^t]|t(?!y[p]e))*$",
+    "flags": "s"
+  },
+  "has_env_read_risk": {
+    "field": "risks",
+    "type": "regex",
+    "pattern": "(?is)\"type\"\\s*:\\s*\"env-read\".*os\\.environ|os\\.environ.*\"type\"\\s*:\\s*\"env-read\"",
+    "flags": "is"
+  },
+  "has_env_read_token": {
+    "field": "risks",
+    "type": "contains",
+    "substring": "GITHUB_TOKEN"
+  },
+  "has_subprocess_risk": {
+    "field": "risks",
+    "type": "regex",
+    "pattern": "(?is)\"type\"\\s*:\\s*\"subprocess\".*subprocess\\.run|subprocess\\.run.*\"type\"\\s*:\\s*\"subprocess\"",
+    "flags": "is"
+  },
+  "has_two_risks": {
+    "field": "risks",
+    "type": "regex",
+    "pattern": "^(?:(?:[^t]|t(?!y[p]e))*\"type\"){2}(?:[^t]|t(?!y[p]e))*$",
+    "flags": "s"
+  }
+}

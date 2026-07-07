@@ -19,7 +19,7 @@ not a description of it. The grader inspects this text directly, so it must:
 
 - include a note that security-flagged PRs were skipped and still need manual review, whenever any security-flagged PRs are present,
 - include a reminder that maintainer-court PRs (author awaiting a maintainer response) still need a maintainer to respond, whenever any are present,
-- reference PRs as clickable links (markdown `[#NNN](url)` or an OSC 8 terminal hyperlink), never a bare `#NNN`.
+- reference EVERY PR as a clickable link (markdown `[#NNN](url)` or an OSC 8 terminal hyperlink), never a bare `#NNN`. This is mandatory for all PR numbers, including ones that only need a passing mention. For example, write `[#42](https://github.com/apache/myproject/pull/42)`, not `#42`. Before returning, scan `recap_text` and confirm that no `#NNN` token appears outside a `[...]( ... )` link or OSC 8 escape.
 
 The `*_count` fields are the exact tallies for the sweep and are compared
 directly.

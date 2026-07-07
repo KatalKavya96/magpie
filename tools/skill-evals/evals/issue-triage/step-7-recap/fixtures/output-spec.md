@@ -25,4 +25,10 @@ Return ONLY valid JSON with this structure:
 `issue-fix-workflow` contains keys classified BUG or FEATURE-REQUEST.
 `closure-flow` contains keys classified INVALID, DUPLICATE, or ALREADY-FIXED.
 NEEDS-INFO keys appear in neither list (awaiting reporter response).
+Route strictly by classification: every posted key lands in `issue-fix-workflow`,
+in `closure-flow`, or (for NEEDS-INFO only) in neither, never in both.
+List the keys in `posted`, `issue-fix-workflow`, and `closure-flow` in the same
+order they appear in the input, and copy each `comment_url` exactly as given.
+`distribution` counts every posted item once, so its six counts sum to the
+length of `posted`.
 Do not include any text outside the JSON object.

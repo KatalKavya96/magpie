@@ -1,7 +1,7 @@
 {
-  "blocks": [
-    {"location": "body", "language": "python", "line_count": 5}
-  ],
-  "reporter_env": {"runtime_version": "Airflow 2.9.1, Python 3.11", "os": "Ubuntu 22.04", "notes": null},
+  "has_body_python_block": true,
+  "has_body_5_lines": true,
+  "has_runtime_airflow_python": true,
+  "has_os_ubuntu": true,
   "block_count": 1
 }

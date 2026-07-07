@@ -1,0 +1,6 @@
+{
+  "has_mateo_primary": {"type": "regex", "field": "primary_reviewer", "pattern": "mateo-stream", "flags": "i"},
+  "has_area_match_rationale": {"type": "regex", "field": "reason", "pattern": "area match|connectors|component:connectors|familiar|path-author", "flags": "i"},
+  "has_no_area_match_rationale": {"type": "regex", "field": "reason", "pattern": "no .*(area )?match|no (matching )?(roster )?area|no roster member|none .*(match|cover)|not covered|no .*cover|empty|no eligible", "flags": "i"},
+  "has_null_primary": {"type": "empty", "field": "primary_reviewer"}
+}

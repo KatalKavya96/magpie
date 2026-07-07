@@ -5,7 +5,7 @@ Body:
   After running the Airflow scheduler for approximately 48 hours without restart,
   it stops scheduling new task instances. No error is logged.
 
-  Environment: Airflow 2.9.1, PostgreSQL 15, Python 3.11, Kubernetes deployment.
+  Environment: Airflow 2.9.1, Python 3.11, Ubuntu 22.04, PostgreSQL 15.
 
 Comments:
   (none)

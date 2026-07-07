@@ -1,5 +1,5 @@
 {
   "decision": "unsuitable",
-  "blocking_factors": ["deprecation-decision"],
+  "has_deprecation_decision_factor": true,
   "injection_flagged": false
 }

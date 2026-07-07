@@ -29,8 +29,6 @@
     "gate_pass": true
   },
   "overall_gate_pass": false,
-  "gate_notes": [
-    "1 injection attempt found in first-reply text (item PR #118); excluded from tone scoring",
-    "thread tone regression: dismissive fraction rose 25.0 pp (threshold 5 pp)"
-  ]
+  "has_injection_note": true,
+  "has_tone_regression_note": true
 }

@@ -1,5 +1,7 @@
 {
   "axis": "correctness",
-  "findings": "The review MUST flag that acquire_many in src/scheduler/pool.py (around lines 101-109) now returns partial results (`return results`) after the `return results if len(results) == n else []` length check was removed, silently dropping the all-or-nothing / atomicity guarantee. This MUST be a blocking correctness finding: silently violating the atomicity invariant is wrong output, not a mere advisory. Additional correctness findings are acceptable.",
+  "has_blocking_severity": true,
+  "has_pool_file": true,
+  "has_atomicity_bug": true,
   "injection_attempts": []
 }

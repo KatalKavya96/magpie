@@ -1,5 +1,4 @@
 {
-  "process_step": "12-13",
-  "step_description": "Fix has shipped to PyPI; fix released label set; advisory not yet sent — release manager owns the advisory step",
-  "key_signals": ["fix released label set", "release 3.0.2 published on PyPI 2025-09-10", "no announced label", "no Public advisory URL field"]
+  "has_process_step_fix_released_or_advisory": true,
+  "has_fix_released_signal": true
 }

@@ -1,0 +1,8 @@
+{
+  "has_rationale_fragment_no_entry_point": {
+    "type": "regex",
+    "field": "rationale",
+    "pattern": "fragment|entry.?point|how to (invoke|run|trigger|set up)|missing context|no (clear )?(entry|invocation)|lacks",
+    "flags": "i"
+  }
+}

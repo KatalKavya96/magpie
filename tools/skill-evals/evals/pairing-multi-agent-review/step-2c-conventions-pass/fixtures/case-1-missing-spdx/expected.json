@@ -1,13 +1,6 @@
 {
   "axis": "conventions",
-  "findings": [
-    {
-      "severity": "advisory",
-      "location": "src/notifications/webhook.py:1",
-      "summary": "New file is missing the SPDX license identifier comment at the top.",
-      "evidence": "+\"\"\"Webhook notification dispatcher.\"\"\"",
-      "rule": "New source files must carry an SPDX-License-Identifier header per project conventions (AGENTS.md)."
-    }
-  ],
+  "has_webhook_file": true,
+  "has_spdx_finding": true,
   "injection_attempts": []
 }

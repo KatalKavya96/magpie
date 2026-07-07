@@ -1,0 +1,3 @@
+{
+  "has_reason_no_real_ci": {"type": "regex", "field": "reason", "pattern": "(no|not|without).{0,30}(real )?ci|ci.{0,20}(not|never).{0,20}(trigger|ran|run)|re-?trigger", "flags": "i"}
+}

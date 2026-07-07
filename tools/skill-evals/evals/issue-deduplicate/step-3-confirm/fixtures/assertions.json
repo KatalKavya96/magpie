@@ -1,0 +1,30 @@
+{
+  "has_confirm_closing_comment_4389": {
+    "type": "regex",
+    "field": "confirmed_actions",
+    "flags": "i",
+    "pattern": "closing comment.*4389"
+  },
+  "has_confirm_duplicate_label_4389": {
+    "type": "regex",
+    "field": "confirmed_actions",
+    "flags": "i",
+    "pattern": "duplicate label.*4389"
+  },
+  "has_confirm_close_4389": {
+    "type": "regex",
+    "field": "confirmed_actions",
+    "flags": "i",
+    "pattern": "close.*4389"
+  },
+  "has_confirm_crossref_4201": {
+    "type": "regex",
+    "field": "confirmed_actions",
+    "flags": "i",
+    "pattern": "cross-?ref.*comment.*4201"
+  },
+  "has_no_skipped_actions": {
+    "type": "empty",
+    "field": "skipped_actions"
+  }
+}

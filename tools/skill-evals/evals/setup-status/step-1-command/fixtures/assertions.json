@@ -1,0 +1,7 @@
+{
+  "has_command": {
+    "type": "regex",
+    "field": "command",
+    "pattern": "python3?\\s+.*collect_status\\.py"
+  }
+}

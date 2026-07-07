@@ -1,4 +1,5 @@
 {
   "disposition": "COMMENT",
-  "reason": "No blocking or major findings, but two minor findings warrant observations without gating the merge."
+  "has_minor_findings_cited": true,
+  "has_no_gate_or_no_major": true
 }

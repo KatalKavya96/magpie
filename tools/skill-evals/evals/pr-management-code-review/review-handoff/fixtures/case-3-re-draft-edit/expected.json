@@ -1,4 +1,5 @@
 {
   "action": "re-draft",
-  "reason": "The maintainer requested a wording edit before posting, so the review body must be revised and re-shown for a second confirmation gate before posting."
+  "has_edit_incorporated": true,
+  "has_reshow_before_post": true
 }

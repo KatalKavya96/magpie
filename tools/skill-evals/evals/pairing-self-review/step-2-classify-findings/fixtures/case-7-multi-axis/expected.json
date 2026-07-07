@@ -1,3 +1,10 @@
 {
-  "findings": "The review MUST include all three of these findings (additional findings are acceptable): (1) a blocking SECURITY finding for SQL injection in airflow/providers/mysql/hooks/mysql.py (around lines 64-67) where `table` and `where` are f-string-interpolated into the query instead of parameterised; (2) a blocking CORRECTNESS finding for the swallowed MySQLError path (around lines 66-72) that leaves `cursor` unbound so `return cursor.fetchall()` raises NameError on failure; (3) a CONVENTIONS finding for the new file airflow/providers/mysql/utils.py missing its SPDX license header (advisory expected, blocking acceptable if treated as CI-gating)."
+  "has_security_finding": true,
+  "has_correctness_finding": true,
+  "has_conventions_finding": true,
+  "has_blocking_severity": true,
+  "has_mysql_hook_file": true,
+  "has_sql_injection_bug": true,
+  "has_unbound_cursor_bug": true,
+  "has_spdx_finding": true
 }

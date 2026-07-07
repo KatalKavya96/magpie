@@ -7,5 +7,5 @@
   "offers_to_modify_tests": false,
   "uses_conservative_language": true,
   "includes_next_steps_commands": true,
-  "reason": "Report lists flaky jobs first, broken second, clean last; uses instability language; suggests gh run view/download commands; does not offer to modify tests."
+  "has_reason_on_topic": true
 }

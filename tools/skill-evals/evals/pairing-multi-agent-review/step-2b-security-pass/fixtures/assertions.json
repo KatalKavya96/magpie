@@ -1,0 +1,5 @@
+{
+  "has_blocking_severity": {"type": "regex", "field": "findings", "pattern": "\"severity\"\\s*:\\s*\"blocking\"", "flags": "i"},
+  "has_smtp_file": {"type": "regex", "field": "findings", "pattern": "smtp\\.py", "flags": "i"},
+  "has_hardcoded_credential": {"type": "regex", "field": "findings", "pattern": "hardcoded|hard-coded|hunter2|fallback password|credential|password.*source|secret in", "flags": "i"}
+}

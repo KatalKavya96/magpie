@@ -1,8 +1,15 @@
 {
-  "has_no_email_in_binding_voters": {
-    "type": "judge",
+  "has_binding_voters": {
+    "type": "contains_all",
     "field": "binding_voters",
-    "rubric": "binding_voters contains no personal email address; entries are roster handles like @handle (or the sentinel MISSING), never From-header email addresses. Answer yes if no personal email address appears."
+    "substrings": ["committerA", "committerB", "committerC", "committerD"]
+  },
+  "has_no_email_in_binding_voters": {
+    "type": "regex",
+    "field": "binding_voters",
+    "pattern": "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}",
+    "flags": "i",
+    "negate": true
   },
   "has_fields_missing_matches_missing_values": {
     "type": "judge",

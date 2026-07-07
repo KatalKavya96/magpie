@@ -1,0 +1,5 @@
+{
+  "has_issues_explicit_keys": {"type": "contains_all", "field": "issues", "substrings": ["AIRFLOW-99101", "AIRFLOW-99202"]},
+  "has_issues_empty": {"type": "empty", "field": "issues"},
+  "has_error_retriage_selector": {"type": "regex", "field": "error", "pattern": "retriage.{0,40}selector|selector.{0,40}retriage|--retriage", "flags": "i"}
+}

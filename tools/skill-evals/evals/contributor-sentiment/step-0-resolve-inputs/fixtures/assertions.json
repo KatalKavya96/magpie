@@ -1,0 +1,14 @@
+{
+  "has_baseline_predate_note": {
+    "type": "regex",
+    "field": "notes",
+    "pattern": "baseline.*(pre-?date|before|after)",
+    "flags": "i"
+  },
+  "has_baseline_override_note": {
+    "type": "regex",
+    "field": "notes",
+    "pattern": "baseline.*(overrid|user|supplied|explicit)|(overrid|user-?supplied|user-?provided|explicit).*baseline",
+    "flags": "i"
+  }
+}

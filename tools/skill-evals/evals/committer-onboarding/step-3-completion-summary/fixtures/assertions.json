@@ -1,0 +1,22 @@
+{
+  "has_all_three_communications": {
+    "type": "contains_all",
+    "field": "communications_sent",
+    "substrings": ["congratulations_email", "secretary_request", "welcome_announcement"]
+  },
+  "has_secretary_request_to_root": {
+    "type": "regex",
+    "field": "communications_sent",
+    "pattern": "\\{[^{}]*(\"type\"\\s*:\\s*\"secretary_request\"[^{}]*\"recipient\"\\s*:\\s*\"root@apache\\.org\"|\"recipient\"\\s*:\\s*\"root@apache\\.org\"[^{}]*\"type\"\\s*:\\s*\"secretary_request\")[^{}]*\\}",
+    "flags": "i"
+  },
+  "has_karma_all_targets": {
+    "type": "contains_all",
+    "field": "karma_granted",
+    "substrings": ["whimsy_roster", "jira", "github_org"]
+  },
+  "has_no_pending_items": {
+    "type": "empty",
+    "field": "pending_items"
+  }
+}

@@ -1,11 +1,15 @@
 {
   "has_security_note": {
-    "type": "judge",
-    "rubric": "'recap_text' includes a note or reminder that security-flagged PRs were skipped and still need manual/human review. Answer yes only if such an advisory is actually present in the text."
+    "type": "regex",
+    "field": "recap_text",
+    "pattern": "security[\\s\\S]{0,120}(manual|human|review)",
+    "flags": "i"
   },
   "has_maintainer_court_note": {
-    "type": "judge",
-    "rubric": "'recap_text' includes a reminder that maintainer-court PRs (those skipped because the author is awaiting a maintainer response) still need a maintainer to respond. Answer yes only if such a reminder is actually present in the text."
+    "type": "regex",
+    "field": "recap_text",
+    "pattern": "maintainer[\\s\\S]{0,120}(respond|response|reply|await)",
+    "flags": "i"
   },
   "has_bare_pr_ref": {
     "type": "judge",

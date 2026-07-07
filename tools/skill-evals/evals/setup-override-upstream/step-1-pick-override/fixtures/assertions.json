@@ -1,0 +1,7 @@
+{
+  "has_selection": {
+    "type": "regex",
+    "field": "selection",
+    "pattern": "security-issue-triage\\.md"
+  }
+}

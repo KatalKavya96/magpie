@@ -1,0 +1,3 @@
+{
+  "has_hold_reason": {"type": "regex", "field": "reason", "pattern": "non-?dag-?author|rest api|unauthenticated|carve-?out|escape|borderline|hold", "flags": "i"}
+}

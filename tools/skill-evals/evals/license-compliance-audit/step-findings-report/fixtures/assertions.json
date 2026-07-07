@@ -1,0 +1,3 @@
+{
+  "has_finding_classes_all": {"type": "contains_all", "field": "finding_classes", "substrings": ["MISSING-NOTICE-FILE", "WRONG-SPDX-HEADER", "MISSING-SPDX-HEADER"]}
+}

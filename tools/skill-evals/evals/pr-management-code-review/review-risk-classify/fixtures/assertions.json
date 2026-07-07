@@ -1,0 +1,14 @@
+{
+  "has_disclosure_missing": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "disclosure|checkbox|authorship|missing|absent|not (?:checked|disclosed|present)",
+    "flags": "i"
+  },
+  "has_does_not_gate_merge": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "does not gate|doesn't gate|not gate|non-?block|does not block|doesn't block|not block|observation|minor|informational|does not require|doesn't require|not require|not required|worth fixing",
+    "flags": "i"
+  }
+}

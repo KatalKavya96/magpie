@@ -3,7 +3,14 @@ the Apache Magpie framework.
 
 Given a drafted mentoring comment, evaluate it against the ordered checklist
 below. Hard-fail rules block posting; soft-fail rules trigger a revision
-attempt. Stop at the first failure.
+attempt.
+
+Evaluate the rules in strict ascending numeric order: 1, 2, 3, ... 14.
+Stop at the FIRST rule that fires and report that rule's number as `rule`.
+Never report a higher-numbered rule when a lower-numbered rule already fires.
+If no hard-fail rule (1-10) fires, continue into the soft-fail rules (11-14)
+in the same ascending order, and stop at the first soft-fail that fires. Only
+if none of rules 1-14 fire is the result "pass".
 
 ## Hard-fail rules (block posting)
 
@@ -14,8 +21,8 @@ attempt. Stop at the first failure.
 | 3 | No AI self-reference outside the footer | Reject if the BODY (everything before the footer) contains "as an AI", "I'm an AI", "I cannot", "as a language model", "I was trained", "my training", or "I don't have access to". |
 | 4 | No speaking for the maintainer | Reject if the BODY contains "the maintainers will probably", "the maintainers want", "the team would prefer". |
 | 5 | No hedging | Reject if the BODY contains "it seems like", "perhaps", "I think maybe", "this might possibly", "I'm not sure but". |
-| 6 | One ask per comment | Reject if the BODY contains more than one direct question (counted by `?` outside code blocks) OR more than one imperative sentence aimed at the contributor. |
-| 7 | Footer present and verbatim | Reject if the comment does not end with the literal text `<ai_attribution_footer>`. Reject if any prose appears after the footer marker. |
+| 6 | One ask per comment | Reject only if the BODY contains two or more direct questions (counted by `?` outside code blocks), OR two or more imperative sentences aimed at the contributor. A single question plus a single imperative is one ask total and does NOT fire this rule. |
+| 7 | Footer present and verbatim | Reject if the draft as provided does not already contain the literal text `<ai_attribution_footer>` as its final line. Do NOT assume the footer will be appended later — evaluate only the exact text given. If the literal string `<ai_attribution_footer>` is absent from the draft, this rule fires (hard-fail, rule 7). Also reject if any prose appears after the footer marker. |
 | 8 | Author tagged once | Reject if `@<author>` appears zero times or more than once in the full comment. |
 | 9 | No paraphrased docs | Reject if the BODY contains a quoted block of more than two lines from a project document. |
 | 10 | No predictions about review outcome | Reject if the BODY contains "looks good", "this should be approved", "this will probably be merged", "I don't think this will land". |

@@ -13,7 +13,7 @@ wins.
 | # | Hand-off trigger | Detection |
 |---|---|---|
 | 4 | Contributor explicitly asked for a human. | The most recent contributor message asks for a maintainer / human / "someone from the team" / "a real person". Highest priority. |
-| 3 | Topic is out of scope. | The thread title or most recent contributor message touches an out-of-scope topic: security issue, CVE, deprecation decision, licensing question, or project-specific architecture decision. |
+| 3 | Topic is out of scope. | The thread title or most recent contributor message touches an out-of-scope topic: a security issue, CVE, deprecation decision, licensing question, or project-specific architecture decision. A routine bug report that merely mentions an upgrade or version change is NOT out of scope. |
 | 1 | Thread reached `MaxAgentTurns`. | The agent's own comment count in the thread (`AgentCommentCount`) equals `MaxAgentTurns` and the thread is not yet resolved — the next move is a hand-off, not another draft. |
 | 2 | Contributor pushed back after the *why* was already answered. | The agent has already answered a "why does this need X?" question once (a prior agent message gave the answer, typically with a doc link) and the next contributor message disagrees ("I don't think that applies here", "but in my case…", "that doesn't make sense"). The skill answers the *why* once; it does not argue. |
 
@@ -43,7 +43,7 @@ the four intervention templates:
 | Template | Trigger |
 |---|---|
 | 1 | Bug report or PR description asserts a problem without a minimal reproduction (no example code, no exact command, no stack trace). |
-| 2 | Bug report omits the version of the project the contributor is running. |
+| 2 | Bug report omits the version of the project the contributor is running. This fires ONLY when the message gives NO version indication at all. If the contributor states a version in any form — an exact number, "the latest version", "after upgrading to the newest release", or similar — template 2 does NOT fire (a version was given, even if imprecise). A missing minimal reproduction is template 1, not template 2. |
 | 3 | PR or issue shows the contributor is missing a piece of repo convention (commit format, PR-title prefix, where tests live, required changelog entry). |
 | 4 | Contributor asks "why does this need X?" on a maintainer's review comment **for the first time** and the answer is in public documentation. (If the agent has already answered a *why* once and the contributor is now arguing, that is hand-off trigger 2 in Step 1, not this template.) |
 

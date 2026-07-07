@@ -1,0 +1,4 @@
+{
+  "has_webhook_file": {"type": "regex", "field": "findings", "pattern": "webhook\\.py", "flags": "i"},
+  "has_spdx_finding": {"type": "regex", "field": "findings", "pattern": "spdx|license identifier|license header|licence", "flags": "i"}
+}

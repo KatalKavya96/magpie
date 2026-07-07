@@ -1,0 +1,30 @@
+{
+  "has_chosen_comment1": {
+    "type": "regex",
+    "field": "chosen_block.location",
+    "pattern": "^comment-1$"
+  },
+  "has_chosen_comment3": {
+    "type": "regex",
+    "field": "chosen_block.location",
+    "pattern": "^comment-3$"
+  },
+  "has_reason_simplest_complete": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "simplest\\b.{0,20}\\bcomplete",
+    "flags": "i"
+  },
+  "has_reason_maintainer_simplified": {
+    "type": "regex",
+    "field": "reason",
+    "pattern": "maintainer.{0,20}simplif|simplif.{0,20}maintainer",
+    "flags": "i"
+  },
+  "has_fallback_body": {
+    "type": "regex",
+    "field": "fallback_chain",
+    "pattern": "\"location\"\\s*:\\s*\"body\"",
+    "flags": "i"
+  }
+}

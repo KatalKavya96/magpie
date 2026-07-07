@@ -1,0 +1,10 @@
+{
+  "has_deprecation_decision_factor": {
+    "type": "regex", "field": "blocking_factors", "pattern": "deprecation-decision"
+  },
+  "has_only_deprecation_factor": {
+    "type": "regex", "field": "blocking_factors",
+    "negate": true,
+    "pattern": "security-sensitive|architectural-decision|scope-too-large|no-acceptance-criteria|no-code-pointer|scope-unclear"
+  }
+}

@@ -21,5 +21,5 @@ Grading rules:
 - `verdict` must be `"blocked"` when any hard blocker remains.
 - `blockers` must be an empty array when `verdict` is `"proceed"`.
 - `sub_command` must be exactly `"plan"`, `"prep"`, or `"post"`.
-- `previous_tag` must be `null` when it cannot be determined at pre-flight.
+- `previous_tag` must carry the previous release tag whenever it is available at pre-flight — for example when the report states a previous release tag was detected, echo that exact tag string (do not null it out just because this is the pre-flight step). Use `null` ONLY when no previous tag can be determined at all (none reported, none detectable).
 - No extra keys are permitted in the response.

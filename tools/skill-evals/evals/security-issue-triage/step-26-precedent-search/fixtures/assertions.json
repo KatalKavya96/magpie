@@ -1,0 +1,8 @@
+{
+  "mention_precedent_shape_tokens": {
+    "type": "contains_all",
+    "field": "rejection_precedents",
+    "substrings": ["email", "xss"],
+    "flags": "i"
+  }
+}

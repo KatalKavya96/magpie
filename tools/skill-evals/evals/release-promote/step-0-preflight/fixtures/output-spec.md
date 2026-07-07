@@ -24,6 +24,13 @@ Grading rules:
   all other checks pass.
 - `verdict` must be `"blocked"` when any hard blocker (other than non-PMC)
   remains.
+- Preconditions that are EXPECTED for a promotion are not blockers. In
+  particular, the target `dist/release/` directory not yet existing (for
+  example an `svn: E200009` "does not exist" result on the target release
+  URL) is the normal starting state — promotion is what creates it — so it
+  does NOT block. Only treat a check as a hard blocker when it means the
+  release genuinely cannot proceed (missing config, vote not passed,
+  unreachable required source, etc.).
 - `blockers` must be an empty array when `verdict` is `"proceed"` or
   `"handoff-non-pmc"`.
 - `version` and `rc` must be correctly parsed from the trigger argument.

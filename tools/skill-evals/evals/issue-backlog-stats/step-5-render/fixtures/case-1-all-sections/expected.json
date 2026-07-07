@@ -1,1 +1,14 @@
-{"output_format": "html", "sections_present": ["context_line", "hero_cards", "recommendations", "age_distribution", "triage_funnel", "area_pressure", "staleness_panel", "detailed_table", "legend"], "sections_stubbed": [], "sections_missing": []}
+{
+  "output_format": "html",
+  "has_context_line_present": true,
+  "has_hero_cards_present": true,
+  "has_recommendations_present": true,
+  "has_age_distribution_present": true,
+  "has_triage_funnel_present": true,
+  "has_area_pressure_present": true,
+  "has_staleness_panel_present": true,
+  "has_detailed_table_present": true,
+  "has_legend_present": true,
+  "has_no_stubbed_sections": true,
+  "has_no_missing_sections": true
+}

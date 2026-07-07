@@ -21,6 +21,11 @@ Rules:
   `spdx_headers`, `commit_shape`, `placeholder_convention`, `contributing_conventions`, `injection_guard`.
 - `status` is `"fail"` when a rule violation would block the PR (CI gate or governance rule),
   `"advisory"` for hygiene issues that will not block the PR, or `"pass"` when no issues are found.
+- Follow each category's own blocking rule, not a general sense of severity. In
+  particular, an un-substituted `<angle-bracket>` placeholder token in a
+  non-template, non-`example` file is a governance violation and is `"fail"`
+  (blocking), NOT `"advisory"`. Only files under a `_template/` directory or
+  whose name contains `example` are exempt.
 - `details` explains the issue; it may be an empty string when `status` is `"pass"`.
 - `locations` lists affected file paths or short commit hashes; it may be empty when `status` is `"pass"`.
 - `any_blocking` is `true` when at least one check has `status: "fail"`, otherwise `false`.

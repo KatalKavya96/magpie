@@ -1,0 +1,8 @@
+{
+  "has_install_reason": {
+    "type": "regex",
+    "field": "follow_up",
+    "pattern": "(hook|script|claude-iso|check)",
+    "flags": "i"
+  }
+}

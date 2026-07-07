@@ -1,0 +1,5 @@
+{
+  "has_binding_veto_fail_reason": {
+    "type": "regex", "field": "fail_reason", "flags": "i", "pattern": "veto"
+  }
+}
