@@ -6,6 +6,7 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Bitbucket forge bridge](#bitbucket-forge-bridge)
+  - [Partial read-only roadmap](#partial-read-only-roadmap)
   - [Prerequisites](#prerequisites)
   - [Features](#features)
   - [Operation coverage](#operation-coverage)
@@ -47,6 +48,39 @@ Bitbucket issue operations or linked Jira handoff coverage exist.
 Later PRs can extend the same adapter with write operations,
 Bitbucket Issues, linked Jira handoff, branch permissions, and
 fuller Pipelines run/log/retry coverage.
+
+## Partial read-only roadmap
+
+The Bitbucket bridge currently provides partial read-only coverage for
+repository and pull-request review context. It intentionally does not claim
+full Bitbucket backend parity.
+
+Implemented read-only commands:
+
+- `magpie-bitbucket auth-check`
+- `magpie-bitbucket repo get`
+- `magpie-bitbucket pr list-open`
+- `magpie-bitbucket pr get <id>`
+- `magpie-bitbucket pr commits <id>`
+- `magpie-bitbucket pr diff <id>`
+- `magpie-bitbucket pr discussion <id>`
+- `magpie-bitbucket pr status <id>`
+
+Remaining candidate read-only gaps include:
+
+- pull-request activity and review-state history, such as approvals,
+  reviewer actions, rescope events, and timeline entries
+- branch restrictions, merge checks, and repository permission context
+- Bitbucket Issues read-only listing and fetching, where enabled
+- linked issue or Jira handoff context, if a repository exposes it through
+  supported APIs
+- deeper Pipelines/build run, log, and artifact read coverage
+
+Write operations are intentionally out of scope for the current bridge
+coverage. Future write support, such as commenting, approving, declining,
+merging, creating issues, changing branches, or triggering builds, should be
+designed separately with explicit human-in-the-loop approval, narrow command
+surfaces, and maintainer review.
 
 ## Prerequisites
 
