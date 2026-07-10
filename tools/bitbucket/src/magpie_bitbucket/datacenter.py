@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from magpie_bitbucket.client import BitbucketConfig, BitbucketError, get_json, quote_path, require
+from magpie_bitbucket.client import BitbucketConfig, BitbucketError, get_json, get_text, quote_path, require
 
 
 def _api_base(config: BitbucketConfig) -> str:
@@ -119,6 +119,22 @@ def get_pull_request_commits(config: BitbucketConfig, pull_request_id: str) -> d
         start = next_start
 
     return combined
+
+
+def get_pull_request_diff(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
+    """Fetch the unified diff for a Bitbucket Data Center pull request."""
+    project_key = quote_path(require(config.project_key, "BITBUCKET_PROJECT_KEY"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    pr_id = quote_path(pull_request_id)
+    url = f"{_api_base(config)}/projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_id}/diff"
+    response = get_text(url, config, accept="text/x-diff")
+
+    return {
+        "pull_request_id": pull_request_id,
+        "body": response["body"],
+        "content_type": response["content_type"],
+        "url": response["url"],
+    }
 
 
 def get_pull_request_status(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:

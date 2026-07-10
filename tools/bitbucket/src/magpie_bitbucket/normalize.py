@@ -195,6 +195,19 @@ def pull_request_commits(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def pull_request_diff(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize pull request diff text from Bitbucket."""
+    return {
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "coverage": "partial-read-only",
+        "pull_request_id": _string(raw.get("pull_request_id")),
+        "diff": _string(raw.get("body")) or "",
+        "content_type": _string(raw.get("content_type")),
+        "url": _string(raw.get("url")),
+        "raw": raw,
+    }
+
+
 def _cloud_commit(raw: dict[str, Any]) -> dict[str, Any]:
     return {
         "hash": _string(raw.get("hash")),

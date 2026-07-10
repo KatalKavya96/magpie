@@ -63,6 +63,9 @@ def _build_parser() -> argparse.ArgumentParser:
     pr_commits = pr_subparsers.add_parser("commits", help="Fetch pull request commits.")
     pr_commits.add_argument("pull_request_id", help="Pull request ID to fetch commits for.")
 
+    pr_diff = pr_subparsers.add_parser("diff", help="Fetch pull request diff.")
+    pr_diff.add_argument("pull_request_id", help="Pull request ID to fetch diff for.")
+
     pr_discussion = pr_subparsers.add_parser("discussion", help="Fetch pull request discussion.")
     pr_discussion.add_argument("pull_request_id", help="Pull request ID to fetch discussion for.")
 
@@ -99,6 +102,10 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
     if args.subcommand == "pr" and args.pr_action == "commits":
         raw = backend.get_pull_request_commits(config, args.pull_request_id)
         return normalize.pull_request_commits(config.kind, raw)
+
+    if args.subcommand == "pr" and args.pr_action == "diff":
+        raw = backend.get_pull_request_diff(config, args.pull_request_id)
+        return normalize.pull_request_diff(config.kind, raw)
 
     if args.subcommand == "pr" and args.pr_action == "discussion":
         raw = backend.get_pull_request_discussion(config, args.pull_request_id)

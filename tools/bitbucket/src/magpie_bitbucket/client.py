@@ -51,6 +51,32 @@ class NoAuthRedirectHandler(urllib.request.HTTPRedirectHandler):
         raise BitbucketError(f"Bitbucket request redirected to {newurl}; refusing to forward credentials")
 
 
+class SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Follow redirects only when the redirect stays on the same HTTPS host."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        old = urllib.parse.urlparse(req.full_url)
+        target = urllib.parse.urljoin(req.full_url, newurl)
+        new = urllib.parse.urlparse(target)
+
+        if new.scheme != old.scheme or new.hostname != old.hostname:
+            raise BitbucketError(f"Bitbucket request redirected to {target}; refusing to forward credentials")
+
+        return urllib.request.Request(
+            target,
+            headers=dict(req.header_items()),
+            method=req.get_method(),
+        )
+
+
 @dataclass(frozen=True)
 class BitbucketConfig:
     """Environment-derived Bitbucket bridge configuration."""
@@ -147,6 +173,42 @@ def get_json(url: str, config: BitbucketConfig) -> dict[str, Any]:
         ) from exc
     except json.JSONDecodeError as exc:
         raise BitbucketError(f"Failed to parse JSON response from {url}") from exc
+
+
+def get_text(url: str, config: BitbucketConfig, accept: str = "text/plain") -> dict[str, Any]:
+    """GET a Bitbucket API URL and return a text response with metadata."""
+    _require_https(url)
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": accept,
+            "Authorization": make_auth_header(config),
+        },
+        method="GET",
+    )
+
+    opener = urllib.request.build_opener(SameHostRedirectHandler)
+
+    try:
+        with opener.open(request, timeout=DEFAULT_TIMEOUT_SECONDS) as response:
+            charset = response.headers.get_content_charset("utf-8")
+            body = response.read().decode(charset, errors="replace")
+            return {
+                "body": body,
+                "content_type": response.headers.get("Content-Type"),
+                "url": response.geturl(),
+            }
+    except BitbucketError:
+        raise
+    except urllib.error.HTTPError as exc:
+        message = _read_http_error(exc)
+        raise BitbucketError(f"Bitbucket request failed with HTTP {exc.code}: {message}") from exc
+    except urllib.error.URLError as exc:
+        raise BitbucketError(f"Failed to connect to Bitbucket: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise BitbucketError(
+            f"Timed out while connecting to Bitbucket after {DEFAULT_TIMEOUT_SECONDS}s"
+        ) from exc
 
 
 def _require_https(url: str) -> None:

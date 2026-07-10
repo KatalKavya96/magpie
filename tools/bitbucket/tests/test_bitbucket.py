@@ -29,6 +29,7 @@ from magpie_bitbucket.client import BitbucketError, load_config, make_auth_heade
 from magpie_bitbucket.normalize import (
     pull_request,
     pull_request_commits,
+    pull_request_diff,
     pull_request_discussion,
     pull_request_list,
     pull_request_status,
@@ -57,6 +58,19 @@ def datacenter_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def make_mock_response(body: dict[str, Any]) -> MagicMock:
     response = MagicMock()
     response.read.return_value = json.dumps(body).encode()
+    return response
+
+
+def make_mock_text_response(
+    body: str,
+    content_type: str = "text/x-diff",
+    url: str = "https://bitbucket.example.test/diff",
+) -> MagicMock:
+    response = MagicMock()
+    response.read.return_value = body.encode()
+    response.headers.get_content_charset.return_value = "utf-8"
+    response.headers.get.return_value = content_type
+    response.geturl.return_value = url
     return response
 
 
@@ -535,6 +549,119 @@ def test_cli_pr_commits_datacenter(
     assert output["backend"] == "bitbucket-datacenter"
     assert output["pull_request_id"] == "9"
     assert output["commits"][0]["hash"] == "def456789"
+
+
+@patch("urllib.request.build_opener")
+def test_cloud_get_pull_request_diff_url(
+    mock_build_opener: MagicMock,
+    cloud_env: None,
+) -> None:
+    response = make_mock_text_response(
+        "diff --git a/a.txt b/a.txt\n",
+        url="https://api.bitbucket.org/2.0/repositories/apache/magpie/diff/source..dest",
+    )
+    opener = MagicMock()
+    opener.open.return_value.__enter__.return_value = response
+    mock_build_opener.return_value = opener
+
+    result = cloud.get_pull_request_diff(load_config(), "7")
+
+    request = opener.open.call_args.args[0]
+    assert request.full_url == "https://api.bitbucket.org/2.0/repositories/apache/magpie/pullrequests/7/diff"
+    assert request.headers["Accept"] == "text/x-diff"
+    assert result["pull_request_id"] == "7"
+    assert result["body"] == "diff --git a/a.txt b/a.txt\n"
+    assert result["content_type"] == "text/x-diff"
+
+
+@patch("urllib.request.build_opener")
+def test_datacenter_get_pull_request_diff_url(
+    mock_build_opener: MagicMock,
+    datacenter_env: None,
+) -> None:
+    response = make_mock_text_response(
+        "diff --git a/a.txt b/a.txt\n",
+        url="https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/pull-requests/9/diff",
+    )
+    opener = MagicMock()
+    opener.open.return_value.__enter__.return_value = response
+    mock_build_opener.return_value = opener
+
+    result = datacenter.get_pull_request_diff(load_config(), "9")
+
+    request = opener.open.call_args.args[0]
+    assert (
+        request.full_url
+        == "https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/pull-requests/9/diff"
+    )
+    assert request.headers["Accept"] == "text/x-diff"
+    assert result["pull_request_id"] == "9"
+    assert result["body"] == "diff --git a/a.txt b/a.txt\n"
+    assert result["content_type"] == "text/x-diff"
+
+
+def test_normalize_pull_request_diff() -> None:
+    raw = {
+        "pull_request_id": "7",
+        "body": "diff --git a/a.txt b/a.txt\n",
+        "content_type": "text/x-diff",
+        "url": "https://api.bitbucket.org/example",
+    }
+
+    result = pull_request_diff("cloud", raw)
+
+    assert result["backend"] == "bitbucket-cloud"
+    assert result["coverage"] == "partial-read-only"
+    assert result["pull_request_id"] == "7"
+    assert result["diff"] == "diff --git a/a.txt b/a.txt\n"
+    assert result["content_type"] == "text/x-diff"
+    assert result["url"] == "https://api.bitbucket.org/example"
+
+
+@patch("magpie_bitbucket.cloud.get_pull_request_diff")
+def test_cli_pr_diff_cloud(
+    mock_get_pull_request_diff: MagicMock,
+    cloud_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_get_pull_request_diff.return_value = {
+        "pull_request_id": "7",
+        "body": "diff --git a/a.txt b/a.txt\n",
+        "content_type": "text/x-diff",
+        "url": "https://api.bitbucket.org/example",
+    }
+
+    exit_code = main(["pr", "diff", "7"])
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert exit_code == 0
+    assert output["backend"] == "bitbucket-cloud"
+    assert output["pull_request_id"] == "7"
+    assert output["diff"] == "diff --git a/a.txt b/a.txt\n"
+
+
+@patch("magpie_bitbucket.datacenter.get_pull_request_diff")
+def test_cli_pr_diff_datacenter(
+    mock_get_pull_request_diff: MagicMock,
+    datacenter_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_get_pull_request_diff.return_value = {
+        "pull_request_id": "9",
+        "body": "diff --git a/a.txt b/a.txt\n",
+        "content_type": "text/x-diff",
+        "url": "https://bitbucket.example.test/example",
+    }
+
+    exit_code = main(["pr", "diff", "9"])
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert exit_code == 0
+    assert output["backend"] == "bitbucket-datacenter"
+    assert output["pull_request_id"] == "9"
+    assert output["diff"] == "diff --git a/a.txt b/a.txt\n"
 
 
 def test_normalize_cloud_repository() -> None:
