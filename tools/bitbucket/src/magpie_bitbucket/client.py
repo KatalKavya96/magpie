@@ -52,7 +52,7 @@ class NoAuthRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 
 class SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Follow redirects only when the redirect stays on the same HTTPS host."""
+    """Follow redirects only when the redirect stays on the same HTTPS origin."""
 
     def redirect_request(
         self,
@@ -67,7 +67,7 @@ class SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
         target = urllib.parse.urljoin(req.full_url, newurl)
         new = urllib.parse.urlparse(target)
 
-        if new.scheme != old.scheme or new.hostname != old.hostname:
+        if _origin(new) != _origin(old):
             raise BitbucketError(f"Bitbucket request redirected to {target}; refusing to forward credentials")
 
         return urllib.request.Request(
@@ -75,6 +75,20 @@ class SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
             headers=dict(req.header_items()),
             method=req.get_method(),
         )
+
+
+def _origin(parsed: urllib.parse.ParseResult) -> tuple[str, str | None, int | None]:
+    """Return the effective HTTPS origin for redirect comparisons."""
+    return (parsed.scheme, parsed.hostname, _effective_port(parsed))
+
+
+def _effective_port(parsed: urllib.parse.ParseResult) -> int | None:
+    """Return the explicit or default port for an HTTPS URL."""
+    if parsed.port is not None:
+        return parsed.port
+    if parsed.scheme == "https":
+        return 443
+    return None
 
 
 @dataclass(frozen=True)

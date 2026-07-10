@@ -50,8 +50,9 @@ by swapping the adapter, not the skill.
 - `tools/bitbucket/` — initial read-only Bitbucket Cloud and Bitbucket
   Data Center bridge foundation. Supports repository metadata reads, open
   pull-request listing, single pull-request fetching, read-only
-  pull-request commit fetching, comments-only pull-request discussion
-  fetching, and read-only pull-request status fetching behind one CLI
+  pull-request commit fetching, read-only pull-request diff fetching,
+  comments-only pull-request discussion fetching, and read-only
+  pull-request status fetching behind one CLI
   surface. It is not a complete `contract:change-request` backend yet;
   deeper Jira handoff, issue operations, review/merge writes, branch
   permissions, and fuller Pipelines run/log/retry coverage remain tracked in #606.

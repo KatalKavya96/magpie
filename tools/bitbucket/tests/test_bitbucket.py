@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import json
+import urllib.request
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -25,7 +26,7 @@ import pytest
 
 from magpie_bitbucket import cloud, datacenter
 from magpie_bitbucket.cli import main
-from magpie_bitbucket.client import BitbucketError, load_config, make_auth_header
+from magpie_bitbucket.client import BitbucketError, SameHostRedirectHandler, load_config, make_auth_header
 from magpie_bitbucket.normalize import (
     pull_request,
     pull_request_commits,
@@ -84,6 +85,61 @@ def mock_opener(mock_build_opener: MagicMock, *bodies: dict[str, Any]) -> MagicM
     ]
     mock_build_opener.return_value = opener
     return opener
+
+
+def urllib_request(url: str) -> urllib.request.Request:
+    return urllib.request.Request(
+        url,
+        headers={"Authorization": "Bearer token-123"},
+        method="GET",
+    )
+
+
+def test_same_host_redirect_handler_allows_same_origin() -> None:
+    handler = SameHostRedirectHandler()
+    request = urllib_request("https://bitbucket.example.test/rest/api/1.0/foo")
+
+    redirected = handler.redirect_request(
+        request,
+        None,
+        302,
+        "Found",
+        {},
+        "https://bitbucket.example.test/rest/api/1.0/bar",
+    )
+
+    assert redirected is not None
+    assert redirected.full_url == "https://bitbucket.example.test/rest/api/1.0/bar"
+
+
+def test_same_host_redirect_handler_rejects_different_host() -> None:
+    handler = SameHostRedirectHandler()
+    request = urllib_request("https://bitbucket.example.test/rest/api/1.0/foo")
+
+    with pytest.raises(BitbucketError, match="refusing to forward credentials"):
+        handler.redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://evil.example.test/rest/api/1.0/bar",
+        )
+
+
+def test_same_host_redirect_handler_rejects_different_port() -> None:
+    handler = SameHostRedirectHandler()
+    request = urllib_request("https://bitbucket.example.test:8443/rest/api/1.0/foo")
+
+    with pytest.raises(BitbucketError, match="refusing to forward credentials"):
+        handler.redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://bitbucket.example.test:9443/rest/api/1.0/bar",
+        )
 
 
 def test_load_config_defaults_to_cloud(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -594,7 +650,7 @@ def test_datacenter_get_pull_request_diff_url(
         request.full_url
         == "https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/pull-requests/9/diff"
     )
-    assert request.headers["Accept"] == "text/x-diff"
+    assert request.headers["Accept"] == "text/plain"
     assert result["pull_request_id"] == "9"
     assert result["body"] == "diff --git a/a.txt b/a.txt\n"
     assert result["content_type"] == "text/x-diff"

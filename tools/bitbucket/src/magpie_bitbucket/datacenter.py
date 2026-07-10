@@ -127,7 +127,7 @@ def get_pull_request_diff(config: BitbucketConfig, pull_request_id: str) -> dict
     repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
     pr_id = quote_path(pull_request_id)
     url = f"{_api_base(config)}/projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_id}/diff"
-    response = get_text(url, config, accept="text/x-diff")
+    response = get_text(url, config, accept="text/plain")
 
     return {
         "pull_request_id": pull_request_id,
