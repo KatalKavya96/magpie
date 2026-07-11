@@ -74,13 +74,7 @@ skills/:
     the actual per-section row counts, and every live skill with a
     ``mode:`` frontmatter must appear in the corresponding section.
     Advisory only — never fails the run unless ``--strict``.
-13. Status field validation (HARD) — when a skill declares a
-    ``status:`` frontmatter key, its value must be from the
-    documented lifecycle vocabulary (``ALLOWED_SKILL_STATUSES``).
-    An unknown status (e.g. ``proposed``, ``done``) is a HARD failure
-    because those values belong to the spec lifecycle, not skill
-    lifecycle.
-14. Multi-capability form advisory (SOFT) — when a ``capability:``
+13. Multi-capability form advisory (SOFT) — when a ``capability:``
     value looks like multiple tokens joined by a space or comma (e.g.
     ``capability: capability:fix capability:resolve``), the skill is
     using string form for what should be a YAML list.  Use the list
@@ -88,14 +82,14 @@ skills/:
     so each entry is validated individually.  Advisory only — the
     vocabulary check (aspect 1) already rejects the joined string, but
     this advisory gives a more actionable error message.
-15. Override-file contract (SOFT) — when a ``.apache-magpie-overrides/``
+14. Override-file contract (SOFT) — when a ``.apache-magpie-overrides/``
     directory exists in the repo, every ``<skill>.md`` file inside it is
     checked to ensure it carries the canonical ``apache-magpie agentic
     override`` header comment and does not contain heuristic patterns that
     attempt to weaken the framework's safety / confidentiality / privacy /
     external-content-as-data baseline.  Advisory only — prose explanations
     of what NOT to do can false-positive here.
-16. Project-template drift (SOFT) — compares ``projects/_template/``
+15. Project-template drift (SOFT) — compares ``projects/_template/``
     with ``projects/non-asf-example/`` for structural drift: files
     referenced in the example README must exist on disk, every config
     file in the example must be documented in its README, and config
@@ -103,7 +97,7 @@ skills/:
     headings (``project.md`` and ``README.md`` are excluded from the
     h2 comparison because their structures intentionally differ by
     organization profile). Advisory only.
-17. Branch-name confidentiality (SOFT) — scans ``git checkout -b`` and
+16. Branch-name confidentiality (SOFT) — scans ``git checkout -b`` and
     ``git switch -c`` examples in fenced code blocks across skills and
     docs and flags any concrete branch name that contains an
     embargo-breaking term: a CVE ID (``CVE-YYYY-NNNNN``), ``security``,
@@ -111,7 +105,7 @@ skills/:
     public branch names must not reveal embargo context.  Lines in
     explicit "bad example" contexts (containing ``**bad**`` or
     ``bad:``) are exempt.  Advisory only.
-18. Capability taxonomy coverage (SOFT) — reads the Axis 1 (skill) and
+17. Capability taxonomy coverage (SOFT) — reads the Axis 1 (skill) and
     Axis 2 (tool) capability vocabulary tables from
     ``docs/labels-and-capabilities.md`` and verifies that every taxonomy
     entry appears in at least one row of the corresponding mapping table
@@ -120,20 +114,20 @@ skills/:
     Definition column are exempted.  Also cross-checks that the hardcoded
     ``SKILL_CAPABILITIES`` and ``TOOL_CAPABILITIES`` code constants match
     the parsed vocabulary so code and docs stay in sync.  Advisory only.
-19. Mail-adapter privacy-boundary (SOFT) — ``contract:mail-source``
+18. Mail-adapter privacy-boundary (SOFT) — ``contract:mail-source``
     and ``contract:mail-archive`` adapter READMEs must declare that
     fetched mail content is external data (not instructions) and must
     mention the prompt-injection risk in embedded mail content. Both
     are advisories — the check warns without failing the run so legacy
     adapters can be brought into compliance deliberately.
-20. SKILL.md line-length limit (SOFT) — ``SKILL.md`` entrypoint files
+19. SKILL.md line-length limit (SOFT) — ``SKILL.md`` entrypoint files
     must stay under ``SKILL_LINE_LIMIT`` (500) lines per PRINCIPLE 14.
     Reference material beyond that limit should move into sibling
     markdown files linked one level deep, with no unreferenced siblings.
     Advisory only — existing skills that pre-date this check are flagged
     for gradual migration; the check prevents new oversized entrypoints
     from being merged unnoticed.
-21. No-default-telemetry import check (SOFT) — PRINCIPLE 10 guarantees
+20. No-default-telemetry import check (SOFT) — PRINCIPLE 10 guarantees
     zero outbound calls from the framework unless a skill's adapter
     action explicitly makes them.  Only ``contract:*`` adapter tools and
     the ``egress-gateway`` proxy are declared egress surfaces; all other
@@ -319,8 +313,8 @@ _CAPABILITY_TOKEN_RE = re.compile(r"`?((?:capability|contract|substrate):[a-z-]+
 # parens.
 _ITALIC_PARENS_RE = re.compile(r"\*\(.*?\)\*")
 
-REQUIRED_FRONTMATTER_KEYS = {"name", "description", "license", "capability"}
-OPTIONAL_FRONTMATTER_KEYS = {"when_to_use", "mode", "organization", "status", "source", "family"}
+REQUIRED_FRONTMATTER_KEYS = {"name", "description", "license", "capability", "family", "mode", "when_to_use"}
+OPTIONAL_FRONTMATTER_KEYS = {"organization", "mcp"}
 ALLOWED_LICENSES = {"Apache-2.0"}
 
 # Canonical skill-family vocabulary.  Skills declare their family via a
@@ -345,12 +339,6 @@ ALLOWED_FAMILIES: frozenset[str] = frozenset(
 # The two families that are wired unconditionally and never appear in the
 # adopt/upgrade opt-in prompt (Golden rule 8).
 ALWAYS_ON_FAMILIES: frozenset[str] = frozenset({"setup", "utilities"})
-
-# Documented skill lifecycle vocabulary.  Skills may declare a ``status:``
-# frontmatter key; its value must be one of these strings.  Spec lifecycle
-# values (``proposed``, ``done``) belong only in spec-loop spec files and
-# are rejected here so a spec status cannot accidentally appear on a skill.
-ALLOWED_SKILL_STATUSES: frozenset[str] = frozenset({"experimental"})
 
 # Canonical capability taxonomy — two orthogonal axes per RFC-AI-0005;
 # docs/labels-and-capabilities.md is authoritative.
@@ -535,8 +523,6 @@ TRIGGER_PRESERVATION_CATEGORY = "trigger_preservation"
 # Pattern 4 — injection-guard callout.  Missing callout = HARD; unfilled TODO = SOFT.
 INJECTION_GUARD_CATEGORY = "injection_guard"
 INJECTION_GUARD_TODO_CATEGORY = "injection_guard_todo"
-# Skill lifecycle status vocabulary check (HARD).
-STATUS_CATEGORY = "skill_status"
 # Space/comma-separated multi-capability form check (SOFT advisory).
 MULTI_CAPABILITY_CATEGORY = "multi_capability_form"
 
@@ -621,7 +607,6 @@ HARD_CATEGORIES: frozenset[str] = frozenset(
         INJECTION_GUARD_CATEGORY,
         NAME_CONVENTION_CATEGORY,
         LICENSE_HEADER_CATEGORY,
-        STATUS_CATEGORY,
         SKILL_SOURCE_CATEGORY,
     }
 )
@@ -993,16 +978,6 @@ def validate_frontmatter(path: Path, text: str, root: Path | None = None) -> Ite
                     f"frontmatter capability '{entry}' not in {sorted(SKILL_CAPABILITIES)} "
                     f"(skills use Axis-1 capability:* values; see docs/labels-and-capabilities.md)",
                 )
-
-    if fm.get("status") and fm["status"] not in ALLOWED_SKILL_STATUSES:
-        yield Violation(
-            path,
-            1,
-            f"frontmatter status '{fm['status']}' not in {sorted(ALLOWED_SKILL_STATUSES)} "
-            f"(documented skill lifecycle vocabulary; spec values like 'proposed'/'done' "
-            f"belong in spec-loop specs, not in skill frontmatter)",
-            category=STATUS_CATEGORY,
-        )
 
     desc_len = len(fm.get("description", ""))
     wtu_len = len(fm.get("when_to_use", ""))
