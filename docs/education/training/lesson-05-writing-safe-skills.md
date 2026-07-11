@@ -373,10 +373,9 @@ depend on whether the text comes from outside the trusted instruction boundary.
 
 ## Next
 
-**[Debugging a skill](../debugging-skills.md)** — step 6 of the learning
-progression (lesson 6 of this module is not yet packaged; follow the source
-page directly until it lands). When the patterns you wrote in this lesson do
-not hold for a specific input, that page is the diagnostic path: reading the
+**[Lesson 6 — Debugging a skill](lesson-06-debugging-a-skill.md)** — step 6
+of the learning progression. When the patterns you wrote in this lesson do
+not hold for a specific input, that lesson is the diagnostic path: reading the
 audit log, isolating the failure, and writing a regression case.
 
 ---
