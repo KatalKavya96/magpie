@@ -90,14 +90,14 @@ produces.
 | `dev_list` | TODO: e.g. `dev@foo.apache.org` | Release `[RESULT][VOTE]` threads; publicly archived |
 | `announce_list` | TODO: e.g. `announce@apache.org` | Cross-project announcement list; publicly archived |
 | `commits_list` | TODO: e.g. `commits@foo.apache.org` | Publicly archived |
-| `asf_security_list` | `security@apache.org` | ASF-wide security team; relays some inbound reports |
 
-**Public archives** typically live at
-`https://lists.apache.org/list.html?<list>`. **Private** lists on
-`lists.apache.org/thread/<id>` 404 for non-members. Only URLs on
-publicly archived lists may appear in CVE `references[]` as
+Only URLs on publicly archived lists may appear in CVE `references[]` as
 `vendor-advisory`; see `../../AGENTS.md` and
 [`security-model.md`](security-model.md).
+
+The foundation-wide security forwarding address (e.g. `security@apache.org`
+for ASF projects) is org-level — inherited from your organization's
+`security_inbox.foundation_security_address`. Do not declare it here.
 
 ## Tools enabled
 
@@ -106,9 +106,9 @@ publicly archived lists may appear in CVE `references[]` as
 | Issue tracking + project board | `github` | [`../../tools/github/`](../../tools/github/) | `tracker_repo`, `upstream_repo`, `github_project_board_*`, `issue_template_fields` |
 | Source control (VCS) | `github` (Git) — replaceable with a non-Git VCS | [`../../tools/github/source-control.md`](../../tools/github/source-control.md) | `upstream_repo`, `default_branch`; for a non-Git VCS declare the sibling tool + its working-copy URL |
 | Inbound email / drafts | `<one or more mail-source backends>` | [`../../tools/mail-source/contract.md`](../../tools/mail-source/contract.md) (abstract) + per-backend adapter dirs (`tools/gmail/`, `tools/ponymail/`, `tools/mail-source/imap/`, `tools/mail-source/mbox/`, ...) | See [Mail sources](#mail-sources) below — declare each backend's role (primary / preferred-for-`<op>` / fallback / optional) and `mandatory` flag |
-| CVE allocation + record mgmt | `vulnogram` | [`../../tools/cve-tool-vulnogram/`](../../tools/cve-tool-vulnogram/) | see [CVE tooling](#cve-tooling) below |
-| ASF project metadata (rosters / people / releases) | `apache-projects` | [`../../tools/apache-projects/`](../../tools/apache-projects/) | see [`project_metadata`](#project-metadata) below — ASF default `mandatory: true` |
-| Release voting / announce | TODO: ASF mailing lists — or replace with the project's release-comms backend | — | via `dev_list` / `announce_list` / `users_list` |
+| CVE allocation + record mgmt | *org-level* — inherited from `organizations/<org>/organization.md → cve_authority.tool`; for ASF: `vulnogram` ([`tools/cve-tool-vulnogram/`](../../tools/cve-tool-vulnogram/)), for independent: `mitre-form` | — | override in [CVE authority](#cve-authority) only if this project differs from its org |
+| Project metadata (rosters / people / releases) | *org-level* — inherited from `organizations/<org>/organization.md → project_metadata.kind`; for ASF: `apache-projects` ([`tools/apache-projects/`](../../tools/apache-projects/)), for independent: `none` | — | override in [Project metadata](#project-metadata) only if this project differs from its org |
+| Release comms | TODO: the backend that carries release announcements — for ASF: `dev_list` / `announce_list` / `users_list`; for GitHub Releases leave blank | — | whichever release-comms keys the org default or per-project override declares |
 
 To replace a tool (e.g. swap GitHub issues for JIRA), declare an
 alternate tool in the table above, add a `tools/<name>/` adapter
@@ -117,21 +117,23 @@ reachable from this manifest.
 
 ## CVE tooling
 
-TODO: describe which CNA tool the project uses. For ASF projects the
-default is ASF's Vulnogram; other CNAs will substitute their own
-equivalents. The Vulnogram-side mechanics live under
-[`../../tools/cve-tool-vulnogram/`](../../tools/cve-tool-vulnogram/); the per-project
-values below are what the generic recipes substitute in.
+The CNA tool, allocation URL, record URL template, and allocation gate are
+**org-level** — inherited from your organization's `cve_authority` and
+`governance` blocks (see
+[`organizations/ASF/organization.md`](../../organizations/ASF/organization.md)
+for ASF defaults,
+[`organizations/independent/organization.md`](../../organizations/independent/organization.md)
+for the GitHub-native baseline). Override a key in the
+[Security workflow configuration → CVE authority](#cve-authority) block only
+if this project's CNA setup genuinely differs from its organization.
+
+For **ASF adopters**, fill in the per-project CNA queue fields below — each
+ASF project has its own queue slug and org UUID, so these are not org-level:
 
 | Key | Value |
 |---|---|
-| `cve_tool` | TODO: e.g. `vulnogram` (ASF-hosted) |
-| `cve_tool_allocate_url` | TODO: e.g. `https://cveprocess.apache.org/allocatecve` |
-| `cve_tool_record_url_template` | TODO: e.g. `https://cveprocess.apache.org/cve5/<CVE-ID>` |
-| `cve_tool_source_tab_url_template` | TODO |
-| `cve_allocation_gated_by` | TODO: e.g. `Foo PMC membership (ASF OAuth)` |
-| `asf_org_id` | TODO: project's CNA org UUID (for ASF projects: `f0158376-9dc2-43b6-827c-5f631a4d8d09`) |
-| `cna_private_owner` | TODO: e.g. `foo` (CNA_private.owner — identifies the project slug inside the ASF CNA queue) |
+| `asf_org_id` | TODO: project's CNA org UUID — e.g. `f0158376-9dc2-43b6-827c-5f631a4d8d09` |
+| `cna_private_owner` | TODO: e.g. `foo` (CNA_private.owner — the project slug inside the ASF CNA queue) |
 | `cna_private_projecturl` | TODO: e.g. `https://foo.apache.org/` |
 | `cna_private_userslist` | TODO: e.g. `users@foo.apache.org` |
 
@@ -186,21 +188,18 @@ remaining backends (and skips ops that no available backend supports).
 | Backend | Role | Mandatory | Notes |
 |---|---|---|---|
 | TODO: `gmail` | TODO: e.g. `primary` | TODO: `yes` / `no` | TODO: e.g. "Triager Gmail account subscribed to `<security-list>` and `<private-list>`" |
-| TODO: `ponymail` | TODO: e.g. `fallback` or `preferred for thread_url` | TODO: ASF default `yes` | TODO: e.g. "Read-only archive backstop; PMC LDAP session required for private-list reads" |
+| TODO: `ponymail` | TODO: e.g. `fallback` or `preferred for thread_url` | TODO: `yes` / `no` | TODO: e.g. "Read-only archive backstop; install per [`tools/ponymail/tool.md`](../../tools/ponymail/tool.md)" |
 | TODO: *(add more rows as needed — `imap`, `mbox`, project-specific adapter)* | | | |
 
-> **ASF default — `ponymail` is `mandatory: yes`.** For ASF
-> projects the PonyMail MCP is a pre-flight prerequisite, not an
-> opt-in backstop: the mail-reading skills that run the Step 0
-> mail-source check (`security-issue-import`, `security-issue-sync`)
-> refuse to run when it is unavailable, even though `gmail` keeps the
-> `primary` role (PonyMail is read-only — drafts stay on Gmail).
-> Skills that only touch a single Gmail thread opportunistically
-> (e.g. `security-cve-allocate`) do not hard-gate on it.
-> Install it from the latest `main` of `apache/comdev` per
+> **Mail backend selection is org-level.** The `mail_provider` block in
+> your organization manifest sets the primary and fallback backends
+> (for ASF: `primary: gmail-mcp`, `fallback: ponymail`; for independent:
+> `primary: none`, `fallback: none`). Only declare backends here that
+> override or extend what the organization manifest provides. For ASF
+> projects where PonyMail is the inherited fallback, declare it here only
+> to change its `mandatory` flag or role for this specific project; the
+> backend itself is already wired by the organization. Install PonyMail per
 > [`../../tools/ponymail/tool.md`](../../tools/ponymail/tool.md#keeping-the-checkout-current).
-> A non-ASF adopter with no `lists.apache.org` archive sets this row
-> to `mandatory: no` (or drops it).
 
 Reference adapter docs:
 [`tools/gmail/tool.md`](../../tools/gmail/tool.md) (full read+write),
