@@ -208,6 +208,158 @@ def pull_request_diff(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def pull_request_reviews(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize pull request review-state activity from Bitbucket."""
+    pull_request_raw = raw.get("pull_request")
+    pull_request_data = pull_request_raw if isinstance(pull_request_raw, dict) else {}
+
+    values = raw.get("values")
+    if not isinstance(values, list):
+        values = []
+
+    review_events: list[dict[str, Any]] = []
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+
+        event = _cloud_review_event(item) if kind == "cloud" else _datacenter_review_event(item)
+        if event is not None:
+            review_events.append(event)
+
+    reviewers = (
+        _cloud_reviewers(pull_request_data) if kind == "cloud" else _datacenter_reviewers(pull_request_data)
+    )
+    approvals = [event for event in review_events if event.get("kind") == "approval"]
+    changes_requested = [event for event in review_events if event.get("kind") == "changes_requested"]
+
+    return {
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "coverage": "partial-read-only",
+        "pull_request_id": _string(raw.get("pull_request_id")),
+        "review_decision": _review_decision(reviewers, approvals, changes_requested),
+        "reviewers": reviewers,
+        "approvals": approvals,
+        "changes_requested": changes_requested,
+        "review_requests": _review_requests(reviewers),
+        "review_events": review_events,
+        "raw": raw,
+    }
+
+
+def _cloud_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    reviewers = raw.get("reviewers")
+    if not isinstance(reviewers, list):
+        return []
+
+    return [_cloud_reviewer(item) for item in reviewers if isinstance(item, dict)]
+
+
+def _cloud_reviewer(raw: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "user": _cloud_user(raw),
+        "approved": _bool_or_none(raw.get("approved")),
+        "role": _string(raw.get("role")),
+        "raw": raw,
+    }
+
+
+def _datacenter_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    reviewers = raw.get("reviewers")
+    if not isinstance(reviewers, list):
+        return []
+
+    return [_datacenter_reviewer(item) for item in reviewers if isinstance(item, dict)]
+
+
+def _datacenter_reviewer(raw: dict[str, Any]) -> dict[str, Any]:
+    status = _string(raw.get("status"))
+    approved = raw.get("approved")
+    if not isinstance(approved, bool) and isinstance(status, str):
+        approved = status.upper() == "APPROVED"
+
+    return {
+        "user": _datacenter_user(raw.get("user") or raw),
+        "approved": _bool_or_none(approved),
+        "status": _string(raw.get("status")),
+        "role": _string(raw.get("role")),
+        "raw": raw,
+    }
+
+
+def _cloud_review_event(raw: dict[str, Any]) -> dict[str, Any] | None:
+    approval = raw.get("approval")
+    if isinstance(approval, dict):
+        return {
+            "kind": "approval",
+            "author": _cloud_user(approval.get("user")),
+            "date": _cloud_timestamp(approval.get("date")),
+            "raw": raw,
+        }
+
+    changes_requested = raw.get("changes_requested")
+    if isinstance(changes_requested, dict):
+        return {
+            "kind": "changes_requested",
+            "author": _cloud_user(changes_requested.get("user")),
+            "date": _cloud_timestamp(changes_requested.get("date")),
+            "raw": raw,
+        }
+
+    update = raw.get("update")
+    if isinstance(update, dict):
+        return {
+            "kind": "updated",
+            "author": _cloud_user(update.get("author")),
+            "date": _cloud_timestamp(update.get("date")),
+            "raw": raw,
+        }
+
+    return None
+
+
+def _datacenter_review_event(raw: dict[str, Any]) -> dict[str, Any] | None:
+    action = _string(raw.get("action") or raw.get("type"))
+    normalized_action = action.upper() if action is not None else ""
+
+    if normalized_action == "APPROVED":
+        return _datacenter_activity_event("approval", raw)
+    if normalized_action in {"UNAPPROVED", "APPROVAL_REMOVED"}:
+        return _datacenter_activity_event("approval_removed", raw)
+    if normalized_action in {"NEEDS_WORK", "CHANGES_REQUESTED"}:
+        return _datacenter_activity_event("changes_requested", raw)
+    if normalized_action in {"REVIEWED", "UPDATED", "RESCOPED"}:
+        return _datacenter_activity_event(normalized_action.lower(), raw)
+
+    return None
+
+
+def _datacenter_activity_event(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kind": kind,
+        "author": _datacenter_user(raw.get("user")),
+        "date": _epoch_millis_to_iso(raw.get("createdDate")),
+        "raw": raw,
+    }
+
+
+def _review_decision(
+    reviewers: list[dict[str, Any]],
+    approvals: list[dict[str, Any]],
+    changes_requested: list[dict[str, Any]],
+) -> str:
+    if changes_requested:
+        return "changes_requested"
+    if approvals or any(reviewer.get("approved") is True for reviewer in reviewers):
+        return "approved"
+    if reviewers:
+        return "review_required"
+    return "unknown"
+
+
+def _review_requests(reviewers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [reviewer for reviewer in reviewers if reviewer.get("approved") is not True]
+
+
 def _cloud_commit(raw: dict[str, Any]) -> dict[str, Any]:
     return {
         "hash": _string(raw.get("hash")),

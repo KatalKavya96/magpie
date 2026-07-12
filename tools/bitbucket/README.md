@@ -64,17 +64,20 @@ Implemented read-only commands:
 - `magpie-bitbucket pr commits <id>`
 - `magpie-bitbucket pr diff <id>`
 - `magpie-bitbucket pr discussion <id>`
+- `magpie-bitbucket pr reviews <id>`
 - `magpie-bitbucket pr status <id>`
 
 Remaining candidate read-only gaps include:
 
-- pull-request activity and review-state history, such as approvals,
-  reviewer actions, rescope events, and timeline entries
 - branch restrictions, merge checks, and repository permission context
 - Bitbucket Issues read-only listing and fetching, where enabled
 - linked issue or Jira handoff context, if a repository exposes it through
   supported APIs
 - deeper Pipelines/build run, log, and artifact read coverage
+
+The `pr reviews` command provides partial read-only review-state coverage,
+including reviewers, approvals, change-request signals, and related review
+activity where exposed by the configured Bitbucket backend.
 
 Write operations are intentionally out of scope for the current bridge
 coverage. Future write support, such as commenting, approving, declining,

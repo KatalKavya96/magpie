@@ -33,6 +33,7 @@ from magpie_bitbucket.normalize import (
     pull_request_diff,
     pull_request_discussion,
     pull_request_list,
+    pull_request_reviews,
     pull_request_status,
     repository,
 )
@@ -389,6 +390,192 @@ def test_normalize_datacenter_pull_request_status_failure() -> None:
     assert result["check_details"][0]["state"] == "failure"
     assert result["check_details"][0]["created"] == "2026-07-07T12:40:00Z"
     assert result["check_details"][0]["updated"] == "2026-07-07T12:45:00Z"
+
+
+@patch("urllib.request.build_opener")
+def test_cloud_get_pull_request_reviews_url(mock_build_opener: MagicMock, cloud_env: None) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {"id": 7, "reviewers": [{"display_name": "Reviewer One"}]},
+        {
+            "values": [
+                {
+                    "approval": {
+                        "user": {"display_name": "Reviewer One"},
+                        "date": "2026-07-01T00:00:00+00:00",
+                    }
+                }
+            ]
+        },
+    )
+
+    result = cloud.get_pull_request_reviews(load_config(), "7")
+
+    first_request = opener.open.call_args_list[0].args[0]
+    second_request = opener.open.call_args_list[1].args[0]
+    assert first_request.full_url == "https://api.bitbucket.org/2.0/repositories/apache/magpie/pullrequests/7"
+    assert (
+        second_request.full_url
+        == "https://api.bitbucket.org/2.0/repositories/apache/magpie/pullrequests/7/activity"
+    )
+    assert result["pull_request"]["id"] == 7
+    assert result["values"][0]["approval"]["user"]["display_name"] == "Reviewer One"
+
+
+@patch("urllib.request.build_opener")
+def test_datacenter_get_pull_request_reviews_url(mock_build_opener: MagicMock, datacenter_env: None) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {
+            "id": 9,
+            "reviewers": [
+                {
+                    "user": {"displayName": "Reviewer One"},
+                    "approved": True,
+                    "status": "APPROVED",
+                }
+            ],
+        },
+        {
+            "values": [
+                {
+                    "action": "APPROVED",
+                    "user": {"displayName": "Reviewer One"},
+                    "createdDate": 1710000000000,
+                }
+            ],
+            "isLastPage": True,
+        },
+    )
+
+    result = datacenter.get_pull_request_reviews(load_config(), "9")
+
+    first_request = opener.open.call_args_list[0].args[0]
+    second_request = opener.open.call_args_list[1].args[0]
+    assert (
+        first_request.full_url
+        == "https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/pull-requests/9"
+    )
+    assert (
+        second_request.full_url
+        == "https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/pull-requests/9/activities?start=0"
+    )
+    assert result["pull_request"]["reviewers"][0]["user"]["displayName"] == "Reviewer One"
+    assert result["values"][0]["action"] == "APPROVED"
+
+
+def test_normalize_pull_request_reviews_cloud() -> None:
+    normalized = pull_request_reviews(
+        "cloud",
+        {
+            "pull_request_id": "7",
+            "pull_request": {"reviewers": [{"display_name": "Reviewer One"}]},
+            "values": [
+                {
+                    "approval": {
+                        "user": {"display_name": "Reviewer One"},
+                        "date": "2026-07-01T00:00:00+00:00",
+                    }
+                },
+                {
+                    "changes_requested": {
+                        "user": {"display_name": "Reviewer Two"},
+                        "date": "2026-07-02T00:00:00+00:00",
+                    }
+                },
+            ],
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-cloud"
+    assert normalized["review_decision"] == "changes_requested"
+    assert normalized["reviewers"][0]["user"] == "Reviewer One"
+    assert normalized["approvals"][0]["author"] == "Reviewer One"
+    assert normalized["changes_requested"][0]["author"] == "Reviewer Two"
+
+
+def test_normalize_pull_request_reviews_datacenter() -> None:
+    normalized = pull_request_reviews(
+        "datacenter",
+        {
+            "pull_request_id": "9",
+            "pull_request": {
+                "reviewers": [
+                    {
+                        "user": {"displayName": "Reviewer One"},
+                        "approved": True,
+                        "status": "APPROVED",
+                    }
+                ]
+            },
+            "values": [
+                {
+                    "action": "APPROVED",
+                    "user": {"displayName": "Reviewer One"},
+                    "createdDate": 1710000000000,
+                }
+            ],
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-datacenter"
+    assert normalized["review_decision"] == "approved"
+    assert normalized["reviewers"][0]["user"] == "Reviewer One"
+    assert normalized["approvals"][0]["author"] == "Reviewer One"
+
+
+def test_cli_pr_reviews_cloud(cloud_env: None, capsys: pytest.CaptureFixture[str]) -> None:
+    with patch(
+        "magpie_bitbucket.cloud.get_pull_request_reviews",
+        return_value={
+            "pull_request_id": "7",
+            "pull_request": {"reviewers": [{"display_name": "Reviewer One"}]},
+            "values": [
+                {
+                    "approval": {
+                        "user": {"display_name": "Reviewer One"},
+                        "date": "2026-07-01T00:00:00+00:00",
+                    }
+                }
+            ],
+        },
+    ) as get_reviews:
+        assert main(["pr", "reviews", "7"]) == 0
+
+    get_reviews.assert_called_once()
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-cloud"
+    assert output["review_decision"] == "approved"
+
+
+def test_cli_pr_reviews_datacenter(datacenter_env: None, capsys: pytest.CaptureFixture[str]) -> None:
+    with patch(
+        "magpie_bitbucket.datacenter.get_pull_request_reviews",
+        return_value={
+            "pull_request_id": "9",
+            "pull_request": {
+                "reviewers": [
+                    {
+                        "user": {"displayName": "Reviewer One"},
+                        "approved": True,
+                    }
+                ]
+            },
+            "values": [
+                {
+                    "action": "APPROVED",
+                    "user": {"displayName": "Reviewer One"},
+                    "createdDate": 1710000000000,
+                }
+            ],
+        },
+    ) as get_reviews:
+        assert main(["pr", "reviews", "9"]) == 0
+
+    get_reviews.assert_called_once()
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-datacenter"
+    assert output["review_decision"] == "approved"
 
 
 @patch("magpie_bitbucket.cloud.get_pull_request_status")
