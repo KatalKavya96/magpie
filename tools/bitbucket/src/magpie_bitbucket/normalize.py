@@ -284,7 +284,16 @@ def _cloud_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:
                 if not isinstance(key, str):
                     continue
                 existing = normalized.get(key)
-                if existing is None or existing.get("review_state") == "pending":
+                if existing is None:
+                    normalized[key] = participant
+                elif (
+                    existing.get("review_state") == "pending" and participant.get("review_state") != "unknown"
+                ):
+                    # A participants[] entry refines a requested reviewer's state,
+                    # but only when it carries a definite signal (approved /
+                    # changes_requested). Never downgrade a pending request to
+                    # "unknown" — that would drop the reviewer from review_requests
+                    # and collapse review_decision to "unknown".
                     normalized[key] = participant
 
     return list(normalized.values())

@@ -644,6 +644,57 @@ def test_normalize_pull_request_reviews_datacenter_needs_work_is_not_pending_req
     assert normalized["review_requests"] == []
 
 
+def test_normalize_pull_request_reviews_cloud_pending_reviewer_survives_participant_merge() -> None:
+    # A requested reviewer who has not acted appears in BOTH reviewers[] (pending)
+    # and participants[] (approved:false, state:null → "unknown"). The participant
+    # merge must not downgrade the pending request to "unknown", or the reviewer
+    # drops out of review_requests and review_decision collapses to "unknown".
+    normalized = pull_request_reviews(
+        "cloud",
+        {
+            "pull_request_id": "7",
+            "pull_request": {
+                "reviewers": [{"display_name": "Reviewer One"}],
+                "participants": [
+                    {
+                        "user": {"display_name": "Reviewer One"},
+                        "role": "REVIEWER",
+                        "approved": False,
+                        "state": None,
+                    }
+                ],
+            },
+            "values": [],
+        },
+    )
+
+    assert normalized["review_decision"] == "review_required"
+    assert [r["user"] for r in normalized["review_requests"]] == ["Reviewer One"]
+    assert [r["review_state"] for r in normalized["reviewers"]] == ["pending"]
+
+
+def test_normalize_pull_request_reviews_cloud_participant_approval_refines_pending() -> None:
+    # The complement of the case above: when the participant carries a definite
+    # signal (approved), it SHOULD refine the pending request to approved.
+    normalized = pull_request_reviews(
+        "cloud",
+        {
+            "pull_request_id": "7",
+            "pull_request": {
+                "reviewers": [{"display_name": "Reviewer One"}],
+                "participants": [
+                    {"user": {"display_name": "Reviewer One"}, "role": "REVIEWER", "approved": True}
+                ],
+            },
+            "values": [],
+        },
+    )
+
+    assert normalized["review_decision"] == "approved"
+    assert normalized["approvals"][0]["author"] == "Reviewer One"
+    assert normalized["review_requests"] == []
+
+
 def test_normalize_pull_request_reviews_latest_event_overrides_old_request_changes() -> None:
     normalized = pull_request_reviews(
         "cloud",
