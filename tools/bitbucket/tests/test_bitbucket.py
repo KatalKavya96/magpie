@@ -524,6 +524,180 @@ def test_normalize_pull_request_reviews_datacenter() -> None:
     assert normalized["approvals"][0]["author"] == "Reviewer One"
 
 
+@patch("urllib.request.build_opener")
+def test_cloud_get_pull_request_reviews_follows_next(mock_build_opener: MagicMock, cloud_env: None) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {"id": 7, "reviewers": [{"display_name": "Reviewer One"}]},
+        {
+            "values": [
+                {"approval": {"user": {"display_name": "Reviewer One"}, "date": "2026-07-01T00:00:00+00:00"}}
+            ],
+            "next": "https://api.bitbucket.org/2.0/repositories/apache/magpie/pullrequests/7/activity?page=2",
+        },
+        {
+            "values": [
+                {
+                    "changes_requested": {
+                        "user": {"display_name": "Reviewer Two"},
+                        "date": "2026-07-02T00:00:00+00:00",
+                    }
+                }
+            ]
+        },
+    )
+
+    result = cloud.get_pull_request_reviews(load_config(), "7")
+
+    third_request = opener.open.call_args_list[2].args[0]
+    assert (
+        third_request.full_url
+        == "https://api.bitbucket.org/2.0/repositories/apache/magpie/pullrequests/7/activity?page=2"
+    )
+    assert len(result["values"]) == 2
+
+
+@patch("urllib.request.build_opener")
+def test_datacenter_get_pull_request_reviews_paginates(
+    mock_build_opener: MagicMock, datacenter_env: None
+) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {"id": 9, "reviewers": []},
+        {
+            "values": [
+                {"action": "APPROVED", "user": {"displayName": "Reviewer One"}, "createdDate": 1710000000000}
+            ],
+            "isLastPage": False,
+            "nextPageStart": 25,
+        },
+        {
+            "values": [
+                {
+                    "action": "NEEDS_WORK",
+                    "user": {"displayName": "Reviewer Two"},
+                    "createdDate": 1710000100000,
+                }
+            ],
+            "isLastPage": True,
+        },
+    )
+
+    result = datacenter.get_pull_request_reviews(load_config(), "9")
+
+    third_request = opener.open.call_args_list[2].args[0]
+    assert (
+        third_request.full_url
+        == "https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/pull-requests/9/activities?start=25"
+    )
+    assert len(result["values"]) == 2
+
+
+def test_normalize_pull_request_reviews_prefers_current_approval_over_old_changes_requested() -> None:
+    normalized = pull_request_reviews(
+        "cloud",
+        {
+            "pull_request_id": "7",
+            "pull_request": {
+                "reviewers": [
+                    {
+                        "display_name": "Reviewer One",
+                        "approved": True,
+                    }
+                ]
+            },
+            "values": [
+                {
+                    "changes_requested": {
+                        "user": {"display_name": "Reviewer One"},
+                        "date": "2026-07-01T00:00:00+00:00",
+                    }
+                }
+            ],
+        },
+    )
+
+    assert normalized["review_decision"] == "approved"
+    assert normalized["approvals"][0]["author"] == "Reviewer One"
+    assert normalized["changes_requested"] == []
+
+
+def test_normalize_pull_request_reviews_datacenter_needs_work_is_not_pending_request() -> None:
+    normalized = pull_request_reviews(
+        "datacenter",
+        {
+            "pull_request_id": "9",
+            "pull_request": {
+                "reviewers": [
+                    {
+                        "user": {"displayName": "Reviewer One"},
+                        "status": "NEEDS_WORK",
+                    }
+                ]
+            },
+            "values": [],
+        },
+    )
+
+    assert normalized["review_decision"] == "changes_requested"
+    assert normalized["changes_requested"][0]["author"] == "Reviewer One"
+    assert normalized["review_requests"] == []
+
+
+def test_normalize_pull_request_reviews_latest_event_overrides_old_request_changes() -> None:
+    normalized = pull_request_reviews(
+        "cloud",
+        {
+            "pull_request_id": "7",
+            "pull_request": {},
+            "values": [
+                {
+                    "changes_requested": {
+                        "user": {"display_name": "Reviewer One"},
+                        "date": "2026-07-01T00:00:00+00:00",
+                    }
+                },
+                {
+                    "approval": {
+                        "user": {"display_name": "Reviewer One"},
+                        "date": "2026-07-02T00:00:00+00:00",
+                    }
+                },
+            ],
+        },
+    )
+
+    assert normalized["review_decision"] == "approved"
+    assert normalized["approvals"][0]["author"] == "Reviewer One"
+    assert normalized["changes_requested"] == []
+
+
+def test_normalize_pull_request_reviews_approval_removed_clears_fallback_approval() -> None:
+    normalized = pull_request_reviews(
+        "datacenter",
+        {
+            "pull_request_id": "9",
+            "pull_request": {},
+            "values": [
+                {
+                    "action": "APPROVED",
+                    "user": {"displayName": "Reviewer One"},
+                    "createdDate": 1710000000000,
+                },
+                {
+                    "action": "UNAPPROVED",
+                    "user": {"displayName": "Reviewer One"},
+                    "createdDate": 1710000100000,
+                },
+            ],
+        },
+    )
+
+    assert normalized["review_decision"] == "review_required"
+    assert normalized["approvals"] == []
+    assert normalized["changes_requested"] == []
+
+
 def test_cli_pr_reviews_cloud(cloud_env: None, capsys: pytest.CaptureFixture[str]) -> None:
     with patch(
         "magpie_bitbucket.cloud.get_pull_request_reviews",

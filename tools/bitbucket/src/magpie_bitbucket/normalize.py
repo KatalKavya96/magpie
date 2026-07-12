@@ -229,14 +229,31 @@ def pull_request_reviews(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     reviewers = (
         _cloud_reviewers(pull_request_data) if kind == "cloud" else _datacenter_reviewers(pull_request_data)
     )
-    approvals = [event for event in review_events if event.get("kind") == "approval"]
-    changes_requested = [event for event in review_events if event.get("kind") == "changes_requested"]
+
+    current_approvals = _current_review_signals(reviewers, "approved")
+    current_changes_requested = _current_review_signals(reviewers, "changes_requested")
+
+    latest_events = _latest_review_events(review_events)
+    event_approvals = [event for event in latest_events if event.get("kind") == "approval"]
+    event_changes_requested = [event for event in latest_events if event.get("kind") == "changes_requested"]
+
+    current_approval_authors = {item.get("author") for item in current_approvals}
+    current_change_authors = {item.get("author") for item in current_changes_requested}
+
+    approvals = current_approvals or [
+        item for item in event_approvals if item.get("author") not in current_change_authors
+    ]
+    changes_requested = current_changes_requested or [
+        item for item in event_changes_requested if item.get("author") not in current_approval_authors
+    ]
 
     return {
         "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
         "coverage": "partial-read-only",
         "pull_request_id": _string(raw.get("pull_request_id")),
-        "review_decision": _review_decision(reviewers, approvals, changes_requested),
+        "review_decision": _review_decision_from_signals(
+            reviewers, latest_events, approvals, changes_requested
+        ),
         "reviewers": reviewers,
         "approvals": approvals,
         "changes_requested": changes_requested,
@@ -248,19 +265,56 @@ def pull_request_reviews(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
 
 def _cloud_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:
     reviewers = raw.get("reviewers")
-    if not isinstance(reviewers, list):
-        return []
+    participants = raw.get("participants")
+    normalized: dict[str, dict[str, Any]] = {}
 
-    return [_cloud_reviewer(item) for item in reviewers if isinstance(item, dict)]
+    if isinstance(reviewers, list):
+        for item in reviewers:
+            if isinstance(item, dict):
+                reviewer = _cloud_reviewer(item, requested=True)
+                key = reviewer.get("user")
+                if isinstance(key, str):
+                    normalized[key] = reviewer
+
+    if isinstance(participants, list):
+        for item in participants:
+            if isinstance(item, dict):
+                participant = _cloud_reviewer(item, requested=False)
+                key = participant.get("user")
+                if not isinstance(key, str):
+                    continue
+                existing = normalized.get(key)
+                if existing is None or existing.get("review_state") == "pending":
+                    normalized[key] = participant
+
+    return list(normalized.values())
 
 
-def _cloud_reviewer(raw: dict[str, Any]) -> dict[str, Any]:
+def _cloud_reviewer(raw: dict[str, Any], *, requested: bool) -> dict[str, Any]:
+    state = _cloud_reviewer_state(raw, requested=requested)
     return {
-        "user": _cloud_user(raw),
-        "approved": _bool_or_none(raw.get("approved")),
+        "user": _cloud_user(raw.get("user") or raw),
+        "approved": state == "approved",
+        "review_state": state,
         "role": _string(raw.get("role")),
         "raw": raw,
     }
+
+
+def _cloud_reviewer_state(raw: dict[str, Any], *, requested: bool) -> str:
+    if raw.get("approved") is True:
+        return "approved"
+
+    state = _string(raw.get("state") or raw.get("status"))
+    normalized = state.upper() if state is not None else ""
+    if normalized in {"CHANGES_REQUESTED", "NEEDS_WORK"}:
+        return "changes_requested"
+    if normalized in {"APPROVED"}:
+        return "approved"
+    if normalized in {"UNAPPROVED", "PENDING", "REVIEW_REQUESTED"}:
+        return "pending"
+
+    return "pending" if requested else "unknown"
 
 
 def _datacenter_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:
@@ -272,18 +326,33 @@ def _datacenter_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _datacenter_reviewer(raw: dict[str, Any]) -> dict[str, Any]:
-    status = _string(raw.get("status"))
-    approved = raw.get("approved")
-    if not isinstance(approved, bool) and isinstance(status, str):
-        approved = status.upper() == "APPROVED"
+    review_state = _datacenter_reviewer_state(raw)
 
     return {
         "user": _datacenter_user(raw.get("user") or raw),
-        "approved": _bool_or_none(approved),
+        "approved": review_state == "approved",
         "status": _string(raw.get("status")),
+        "review_state": review_state,
         "role": _string(raw.get("role")),
         "raw": raw,
     }
+
+
+def _datacenter_reviewer_state(raw: dict[str, Any]) -> str:
+    approved = raw.get("approved")
+    if approved is True:
+        return "approved"
+
+    status = _string(raw.get("status"))
+    normalized = status.upper() if status is not None else ""
+    if normalized == "APPROVED":
+        return "approved"
+    if normalized in {"NEEDS_WORK", "CHANGES_REQUESTED"}:
+        return "changes_requested"
+    if normalized in {"UNAPPROVED", "PENDING", "NOT_APPROVED"}:
+        return "pending"
+
+    return "unknown"
 
 
 def _cloud_review_event(raw: dict[str, Any]) -> dict[str, Any] | None:
@@ -302,6 +371,15 @@ def _cloud_review_event(raw: dict[str, Any]) -> dict[str, Any] | None:
             "kind": "changes_requested",
             "author": _cloud_user(changes_requested.get("user")),
             "date": _cloud_timestamp(changes_requested.get("date")),
+            "raw": raw,
+        }
+
+    approval_removed = raw.get("approval_removed") or raw.get("unapproval")
+    if isinstance(approval_removed, dict):
+        return {
+            "kind": "approval_removed",
+            "author": _cloud_user(approval_removed.get("user")),
+            "date": _cloud_timestamp(approval_removed.get("date")),
             "raw": raw,
         }
 
@@ -342,22 +420,79 @@ def _datacenter_activity_event(kind: str, raw: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def _review_decision(
+def _current_review_signals(
     reviewers: list[dict[str, Any]],
+    review_state: str,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "kind": review_state,
+            "author": reviewer.get("user"),
+            "status": reviewer.get("status"),
+            "raw": reviewer.get("raw"),
+        }
+        for reviewer in reviewers
+        if reviewer.get("review_state") == review_state
+    ]
+
+
+def _review_decision_from_signals(
+    reviewers: list[dict[str, Any]],
+    latest_events: Any,
     approvals: list[dict[str, Any]],
     changes_requested: list[dict[str, Any]],
 ) -> str:
     if changes_requested:
         return "changes_requested"
-    if approvals or any(reviewer.get("approved") is True for reviewer in reviewers):
+    if approvals:
         return "approved"
-    if reviewers:
+    return _review_decision(reviewers, latest_events)
+
+
+def _review_decision(
+    reviewers: list[dict[str, Any]],
+    latest_events: list[dict[str, Any]],
+) -> str:
+    reviewer_states = {reviewer.get("review_state") for reviewer in reviewers}
+    if "changes_requested" in reviewer_states:
+        return "changes_requested"
+    if "approved" in reviewer_states:
+        return "approved"
+    if "pending" in reviewer_states:
         return "review_required"
+
+    event_states = {event.get("kind") for event in latest_events}
+    if "changes_requested" in event_states:
+        return "changes_requested"
+    if "approval" in event_states:
+        return "approved"
+    if "approval_removed" in event_states:
+        return "review_required"
+
     return "unknown"
 
 
+def _latest_review_events(review_events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    latest: dict[str, tuple[str, int, dict[str, Any]]] = {}
+    for index, event in enumerate(review_events):
+        kind = event.get("kind")
+        if kind not in {"approval", "approval_removed", "changes_requested"}:
+            continue
+
+        author = event.get("author")
+        if not isinstance(author, str):
+            continue
+
+        date = _string(event.get("date")) or ""
+        previous = latest.get(author)
+        if previous is None or (date, index) >= (previous[0], previous[1]):
+            latest[author] = (date, index, event)
+
+    return [item[2] for item in latest.values()]
+
+
 def _review_requests(reviewers: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [reviewer for reviewer in reviewers if reviewer.get("approved") is not True]
+    return [reviewer for reviewer in reviewers if reviewer.get("review_state") == "pending"]
 
 
 def _cloud_commit(raw: dict[str, Any]) -> dict[str, Any]:
