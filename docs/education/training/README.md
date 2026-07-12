@@ -66,10 +66,7 @@ Nothing in this directory duplicates the reference material; it only frames it.
 | [Lesson 9 — Agentic and autonomous work](lesson-09-agentic-and-autonomous-work.md) | [Agentic and autonomous work](../agentic-work.md) | ~45 min |
 | [Lesson 10 — English as a programming language](lesson-10-english-as-a-programming-language.md) | [English as a programming language](../english-as-code.md) | ~30 min |
 | [Lesson 11 — How to contribute](lesson-11-how-to-contribute.md) | [How to contribute](../contributing.md) | ~30 min |
-| Hands-on lab | [Tutorials](../tutorials.md) | ~90 min |
-
-> The hands-on lab follows the same format as lessons 1–11. It is added
-> per-sub-item; this file tracks it as a placeholder until it lands.
+| [Hands-on lab](lesson-lab-tutorials.md) | [Tutorial: build and evaluate a skill](../tutorials.md) | ~90 min |
 
 ## Delivery formats
 

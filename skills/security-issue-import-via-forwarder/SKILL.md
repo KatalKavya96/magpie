@@ -140,7 +140,7 @@ re-render it later — the parent may not know whether to wrap.
 
 Before running the default behaviour documented
 below, this skill consults
-[`.apache-magpie-overrides/security-issue-import-via-forwarder.md`](../../docs/setup/agentic-overrides.md)
+[`.apache-magpie-local/security-issue-import-via-forwarder.md`](../../docs/setup/agentic-overrides.md) (personal, gitignored) and [`.apache-magpie-overrides/security-issue-import-via-forwarder.md`](../../docs/setup/agentic-overrides.md) (committed, project-wide)
 in the adopter repo if it exists, and applies any
 agent-readable overrides it finds. See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md)

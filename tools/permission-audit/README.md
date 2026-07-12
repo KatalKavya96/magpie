@@ -10,6 +10,7 @@
   - [Why](#why)
   - [Install](#install)
   - [CLI](#cli)
+    - [`audit-any` (harness-neutral)](#audit-any-harness-neutral)
     - [`audit`](#audit)
     - [`apply`](#apply)
     - [`list-known`](#list-known)
@@ -26,7 +27,7 @@
 
 **Capability:** substrate:sandbox
 
-**Harness:** Claude Code, OpenCode, Kiro
+**Harness:** agnostic
 
 Audit + atomically edit Claude Code's `permissions.allow[]` entries
 in `<repo>/.claude/settings.json` and `<repo>/.claude/settings.local.json`.
@@ -126,10 +127,53 @@ Stdlib-only runtime; the dev group adds `pytest`, `ruff`, `mypy`.
 ## CLI
 
 ```bash
+permission-audit audit-any [--dir <project-root>] [--families security,issue]
 permission-audit audit <settings-path> [--families security,issue]
 permission-audit apply <settings-path> [--add <entry>]... [--remove <entry>]... [--create-if-missing]
 permission-audit list-known
 ```
+
+### `audit-any` (harness-neutral)
+
+Scans `<project-root>` (default: `.`) for every known settings file and
+audits each with the appropriate classifier — no need to know which
+harness is active. Detected harnesses:
+
+| File | Harness |
+|---|---|
+| `.claude/settings.json` | Claude Code |
+| `.claude/settings.local.json` | Claude Code (local override) |
+| `opencode.json` | OpenCode |
+
+Returns JSON with one entry per detected file plus a top-level
+`has_forbidden` flag. Exit code `1` when any harness has forbidden
+entries, `0` otherwise.
+
+```bash
+$ permission-audit audit-any --dir /path/to/project
+{
+  "dir": "/path/to/project",
+  "detected_harnesses": ["claude-code", "opencode"],
+  "results": [
+    {
+      "harness": "claude-code",
+      "settings_path": "/path/to/project/.claude/settings.json",
+      "forbidden": [...],
+      "missing_recommended": [...]
+    },
+    {
+      "harness": "opencode",
+      "settings_path": "/path/to/project/opencode.json",
+      "forbidden": [...]
+    }
+  ],
+  "has_forbidden": true
+}
+```
+
+This is the recommended entry point when driving the audit from a harness
+that is not Claude Code or OpenCode — wire it as a startup check or CI step
+without any harness-specific plumbing.
 
 ### `audit`
 

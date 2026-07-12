@@ -3088,6 +3088,103 @@ class TestOrganizationStructure:
 
 
 # ---------------------------------------------------------------------------
+# Non-ASF organization profile smoke coverage
+# ---------------------------------------------------------------------------
+
+
+class TestOrganizationNonASFSmoke:
+    """Smoke coverage for the 'independent' (no-formal-governing-body) profile.
+
+    The non-ASF profile must drive security intake backend selection,
+    release backend selection, and contributor-governance defaults without
+    any ASF-specific coupling violations — per the organization-adapters
+    spec acceptance criteria.
+    """
+
+    def _make_org(self, tmp_path: Path, org: str) -> None:
+        org_dir = tmp_path / "organizations" / org
+        org_dir.mkdir(parents=True)
+        (org_dir / "README.md").write_text("# placeholder\n")
+        (org_dir / "organization.md").write_text("# placeholder\n")
+
+    def test_security_intake_independent_org_no_violations(self, tmp_path: Path) -> None:
+        """Security-intake skill (GHSA direct, no forwarder relay) validates clean."""
+        self._make_org(tmp_path, "independent")
+        text = (
+            "---\n"
+            "name: magpie-security-intake\n"
+            "description: d\n"
+            "license: Apache-2.0\n"
+            "capability: capability:intake\n"
+            "organization: independent\n"
+            "---\n\n"
+            "## Workflow\n\n"
+            "Import security reports filed via GitHub Security Advisories (GHSA).\n"
+            "No forwarder relay is configured; reports arrive directly from\n"
+            "`notifications@github.com` into the project security inbox.\n"
+        )
+        path = tmp_path / "SKILL.md"
+        org_violations = [
+            v for v in validate_frontmatter(path, text, root=tmp_path) if v.category == ORGANIZATION_CATEGORY
+        ]
+        coupling_violations = list(validate_asf_coupling(path, text))
+        assert org_violations == [], "independent org must be accepted for intake skill"
+        assert coupling_violations == [], "GHSA/inbox body must not trigger ASF-coupling warnings"
+
+    def test_release_backend_independent_org_no_violations(self, tmp_path: Path) -> None:
+        """Release housekeeping skill (GitHub Releases, no SVN/dist tree) validates clean."""
+        self._make_org(tmp_path, "independent")
+        text = (
+            "---\n"
+            "name: magpie-release-housekeeping\n"
+            "description: d\n"
+            "license: Apache-2.0\n"
+            "capability: capability:resolve\n"
+            "organization: independent\n"
+            "---\n\n"
+            "## Workflow\n\n"
+            "Post-release housekeeping: publish the GitHub Release artifact,\n"
+            "update the changelog, and close the project milestone.\n"
+        )
+        path = tmp_path / "SKILL.md"
+        org_violations = [
+            v for v in validate_frontmatter(path, text, root=tmp_path) if v.category == ORGANIZATION_CATEGORY
+        ]
+        coupling_violations = list(validate_asf_coupling(path, text))
+        assert org_violations == [], "independent org must be accepted for resolve skill"
+        assert coupling_violations == [], "GitHub Releases body must not trigger ASF-coupling warnings"
+
+    def test_contributor_governance_independent_org_no_violations(self, tmp_path: Path) -> None:
+        """Contributor governance skill (DCO, maintainer vote) validates clean."""
+        self._make_org(tmp_path, "independent")
+        text = (
+            "---\n"
+            "name: magpie-contributor-setup\n"
+            "description: d\n"
+            "license: Apache-2.0\n"
+            "capability: capability:platform\n"
+            "organization: independent\n"
+            "---\n\n"
+            "## Workflow\n\n"
+            "Verify DCO sign-off on the contributor's recent merged PRs.\n"
+            "The maintainer team votes to grant repository write access.\n"
+        )
+        path = tmp_path / "SKILL.md"
+        org_violations = [
+            v for v in validate_frontmatter(path, text, root=tmp_path) if v.category == ORGANIZATION_CATEGORY
+        ]
+        coupling_violations = list(validate_asf_coupling(path, text))
+        assert org_violations == [], "independent org must be accepted for platform skill"
+        assert coupling_violations == [], "DCO/maintainer body must not trigger ASF-coupling warnings"
+
+    def test_independent_org_structure_no_violations(self, tmp_path: Path) -> None:
+        """A fully-formed independent organization adapter passes the structure check."""
+        self._make_org(tmp_path, "independent")
+        vs = list(validate_organization_structure(tmp_path))
+        assert vs == []
+
+
+# ---------------------------------------------------------------------------
 # Capability sync check: docs/labels-and-capabilities.md ↔ live source
 # ---------------------------------------------------------------------------
 

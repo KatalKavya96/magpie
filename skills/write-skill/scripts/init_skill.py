@@ -115,14 +115,21 @@ more detail and any context the agent needs upfront.
 ## Adopter overrides
 
 Before running the default behaviour documented
-below, this skill consults
-[`.apache-magpie-overrides/{name}.md`](../../../docs/setup/agentic-overrides.md)
-in the adopter repo if it exists, and applies any
-agent-readable overrides it finds. See
+below, this skill consults **two** override surfaces
+in the adopter repo, applying any agent-readable
+overrides it finds:
+
+1. [`.apache-magpie-local/{name}.md`](../../../docs/setup/agentic-overrides.md)
+   — personal, gitignored. Applied first; wins on
+   conflict.
+2. [`.apache-magpie-overrides/{name}.md`](../../../docs/setup/agentic-overrides.md)
+   — committed, project-wide. Applied next.
+
+See
 [`docs/setup/agentic-overrides.md`](../../../docs/setup/agentic-overrides.md)
-for the contract — what overrides may contain, hard
-rules, the reconciliation flow on framework upgrade,
-upstreaming guidance.
+for the full contract — the lookup protocol, what
+overrides may contain, hard rules, the reconciliation
+flow on framework upgrade, upstreaming guidance.
 
 **Hard rule**: agents NEVER modify the snapshot under
 `<adopter-repo>/.apache-magpie/`. Local modifications

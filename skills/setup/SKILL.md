@@ -246,6 +246,8 @@ Gitignored in the adopter repo:
 - `<snapshot-dir>` (the entire framework snapshot — gigabytes
   potentially).
 - `<local-lock>` (per-machine state).
+- `.apache-magpie-local/` (personal, per-developer override
+  directory — see Golden rule 7).
 - The `magpie-*` symlinks `setup adopt` creates in every active
   target dir — the canonical ones in `.agents/skills/` (they
   target the gitignored snapshot) and the relays in
@@ -298,13 +300,21 @@ silently mis-applies.
 
 **Golden rule 7 — agentic overrides are read at run-time.**
 Every framework skill that supports overrides starts its run
-by checking `.apache-magpie-overrides/<this-skill>.md` for
-adopter-specific instructions and applying them before
-executing the default behaviour. The override file is plain
-markdown the agent interprets — no templating engine, no
-patch tool. See
+by consulting **two** directories in precedence order (first
+hit wins):
+
+1. `.apache-magpie-local/<this-skill>.md` — personal,
+   gitignored. Per-developer overrides that are never
+   committed.
+2. `.apache-magpie-overrides/<this-skill>.md` — committed,
+   project-wide. Overrides shared with every contributor.
+
+Both files are plain markdown the agent interprets — no
+templating engine, no patch tool. The additive-only guardrail
+applies to both: neither may weaken the framework's safety,
+confidentiality, or privacy baseline. See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md)
-for the contract.
+for the full contract including the lookup protocol.
 
 **Golden rule 8 — family membership is declared in
 frontmatter; two families are *always* installed, the rest

@@ -263,7 +263,7 @@ the context without re-running the full checklist.
 ## Adopter overrides
 
 Before running the default behaviour above, this skill consults
-`.apache-magpie-overrides/pre-first-pr-check.md` in the adopter repo if it exists,
+`.apache-magpie-local/pre-first-pr-check.md` (personal, gitignored) and `.apache-magpie-overrides/pre-first-pr-check.md` (committed, project-wide) in the adopter repo if it exists,
 and applies any agent-readable overrides it finds. See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md) for the
 contract. Hard rule: agents never modify the snapshot under

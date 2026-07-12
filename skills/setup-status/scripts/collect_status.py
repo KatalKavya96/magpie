@@ -19,10 +19,11 @@
 
 Read-only. Enumerates the on-disk adoption artefacts —
 the two lock files, the framework-skill symlinks across every
-agent target, the snapshot, the overrides directory, the
-post-checkout hook, and the .gitignore coverage — and emits a
-single JSON document the ``setup-status`` skill renders into a
-dashboard.
+agent target, the snapshot, the overrides directories (both the
+committed .apache-magpie-overrides/ and the personal
+.apache-magpie-local/), the post-checkout hook, and the
+.gitignore coverage — and emits a single JSON document the
+``setup-status`` skill renders into a dashboard.
 
 The script never fetches over the network and never writes: the
 upstream-tip drift check and any remediation belong to
@@ -302,6 +303,7 @@ def gitignore_coverage(root: Path, targets: list[dict]) -> dict:
         "present": gi.is_file(),
         "snapshot_ignored": "/.apache-magpie/" in lines,
         "local_lock_ignored": "/.apache-magpie.local.lock" in lines,
+        "local_overrides_ignored": "/.apache-magpie-local/" in lines,
         "settings_local_ignored": "/.claude/settings.local.json" in lines,
         "targets": {},
     }
@@ -321,6 +323,22 @@ def gitignore_coverage(root: Path, targets: list[dict]) -> dict:
             "all_unignored": keep_all in lines,
         }
     return cov
+
+
+def override_dir_status(root: Path, dirname: str) -> dict:
+    """Describe one override directory (committed or personal-local)."""
+    d = root / dirname
+    if not d.is_dir():
+        return {"present": False, "has_readme": False, "skill_count": 0}
+    skill_files = [
+        p for p in d.iterdir()
+        if p.is_file() and p.suffix == ".md" and p.name != "README.md"
+    ]
+    return {
+        "present": True,
+        "has_readme": (d / "README.md").is_file(),
+        "skill_count": len(skill_files),
+    }
 
 
 def hook_status(root: Path) -> dict:
@@ -435,9 +453,20 @@ def render_markdown(d: dict) -> str:
     out.append("### Drift & integrity")
     out.append("")
     out.append(f"- **drift:** {drift_line} · **snapshot:** {snap}")
+    ov = d["overrides"]
+    local_ov = d["local_overrides"]
+    ov_text = f"present ({ov['skill_count']} skill(s))" if ov["present"] else "—"
+    local_ov_text = (
+        f"present ({local_ov['skill_count']} skill(s))"
+        if local_ov["present"]
+        else "—"
+    )
     out.append(
-        f"- **overrides:** {'present' if d['overrides']['present'] else '—'} · "
-        f"**hook:** {'installed' if d['post_checkout_hook']['present'] else '—'}"
+        f"- **shared overrides** (`.apache-magpie-overrides/`): {ov_text} · "
+        f"**personal overrides** (`.apache-magpie-local/`): {local_ov_text}"
+    )
+    out.append(
+        f"- **hook:** {'installed' if d['post_checkout_hook']['present'] else '—'}"
     )
     out.append("- → deep check (integrity, permissions, worktrees): `/magpie-setup verify`")
     return "\n".join(out) + "\n"
@@ -485,10 +514,8 @@ def main(argv: list[str] | None = None) -> int:
         "agent_targets": targets,
         "active_target_ids": [t["id"] for t in targets if t["present"]],
         "families": families_installed(canonical["entries"]),
-        "overrides": {
-            "present": (root / ".apache-magpie-overrides").is_dir(),
-            "has_readme": (root / ".apache-magpie-overrides" / "README.md").is_file(),
-        },
+        "overrides": override_dir_status(root, ".apache-magpie-overrides"),
+        "local_overrides": override_dir_status(root, ".apache-magpie-local"),
         "post_checkout_hook": hook_status(root),
         "gitignore": gitignore_coverage(root, targets),
     }

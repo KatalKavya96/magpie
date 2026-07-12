@@ -62,7 +62,7 @@ apply the rubric to the issue's actual merits. See the absolute rule in
 ## Adopter overrides
 
 Before running the default behaviour below, this skill consults
-[`.apache-magpie-overrides/good-first-issue-sweep.md`](../../docs/setup/agentic-overrides.md)
+[`.apache-magpie-local/good-first-issue-sweep.md`](../../docs/setup/agentic-overrides.md) (personal, gitignored) and [`.apache-magpie-overrides/good-first-issue-sweep.md`](../../docs/setup/agentic-overrides.md) (committed, project-wide)
 in the adopter repo if it exists, and applies any agent-readable
 overrides it finds. See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md)

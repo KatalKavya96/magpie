@@ -16,13 +16,21 @@
 # under the License.
 """CLI front-end for the permission allow-list audit + edit tool.
 
-Two subcommands:
+Subcommands:
 
-- ``audit``  — read a settings file, classify allow-list entries
+- ``audit``      — read a Claude Code settings file, classify allow-list entries
   against the forbidden and family-scoped recommended lists, print
   findings as JSON for the calling skill to surface.
 
-- ``apply`` — atomic add/remove against `.permissions.allow[]`.
+- ``apply``      — atomic add/remove against `.permissions.allow[]`.
+
+- ``audit-any``  — harness-neutral sweep: auto-detect every known settings
+  file in a project directory and audit each with the appropriate classifier.
+  Works regardless of which agent harness the caller uses.
+
+- ``audit-opencode`` — audit an OpenCode opencode.json permission config.
+
+- ``list-known`` — print the canonical forbidden + recommended-by-family lists.
 """
 
 from __future__ import annotations
@@ -153,6 +161,65 @@ def _cmd_audit_kiro(args: argparse.Namespace) -> int:
     return 1 if result.forbidden else 0
 
 
+# Known harness settings locations in declaration-check order.
+# Each entry: (harness_id, path_relative_to_project_dir, audit_kind)
+# audit_kind is "claude" (uses audit_settings) or "opencode" (uses audit_opencode).
+_HARNESS_SETTINGS: tuple[tuple[str, str, str], ...] = (
+    ("claude-code", ".claude/settings.json", "claude"),
+    ("claude-code-local", ".claude/settings.local.json", "claude"),
+    ("opencode", "opencode.json", "opencode"),
+)
+
+
+def _cmd_audit_any(args: argparse.Namespace) -> int:
+    """Auto-detect settings files in --dir and audit each with the right classifier.
+
+    Harness-neutral: the caller does not need to know which harness is active —
+    every settings file that exists in the project directory is audited.
+    Returns exit code 1 if any harness has forbidden entries, 0 otherwise.
+    """
+    root = Path(args.dir).resolve()
+    families = [f.strip() for f in (args.families or "").split(",") if f.strip()]
+
+    results: list[dict] = []
+    for harness_id, rel_path, audit_kind in _HARNESS_SETTINGS:
+        full_path = root / rel_path
+        if not full_path.exists():
+            continue
+        if audit_kind == "claude":
+            allow = _read_allow(full_path)
+            r = audit_settings(allow, families)
+            results.append(
+                {
+                    "harness": harness_id,
+                    "settings_path": str(full_path),
+                    "forbidden": [asdict(f) for f in r.forbidden],
+                    "missing_recommended": [asdict(f) for f in r.missing_recommended],
+                }
+            )
+        else:  # opencode
+            config = _read_opencode_config(full_path)
+            r_oc = audit_opencode(config)
+            results.append(
+                {
+                    "harness": harness_id,
+                    "settings_path": str(full_path),
+                    "forbidden": [asdict(f) for f in r_oc.forbidden],
+                }
+            )
+
+    has_forbidden = any(entry["forbidden"] for entry in results)
+    output = {
+        "dir": str(root),
+        "detected_harnesses": [entry["harness"] for entry in results],
+        "results": results,
+        "has_forbidden": has_forbidden,
+    }
+    json.dump(output, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+    return 1 if has_forbidden else 0
+
+
 def _cmd_list_known(args: argparse.Namespace) -> int:
     output = {
         "forbidden_patterns": sorted(FORBIDDEN_PATTERNS),
@@ -168,8 +235,10 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="permission-audit",
         description=(
             "Audit + atomically edit Claude Code permissions.allow[] entries "
-            "in .claude/settings.json / .claude/settings.local.json; and "
-            "audit an OpenCode opencode.json permission config (audit-opencode)."
+            "in .claude/settings.json / .claude/settings.local.json; "
+            "audit an OpenCode opencode.json permission config (audit-opencode); "
+            "or run a harness-neutral sweep that auto-detects all known settings "
+            "files in the project (audit-any)."
         ),
     )
     subparsers = parser.add_subparsers(dest="cmd", required=True)
@@ -203,6 +272,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Create the settings file if it does not exist.",
     )
     p_apply.set_defaults(func=_cmd_apply)
+
+    p_audit_any = subparsers.add_parser(
+        "audit-any",
+        help=(
+            "Harness-neutral sweep: auto-detect every known settings file under "
+            "--dir and audit each. Works without knowing which harness is active."
+        ),
+    )
+    p_audit_any.add_argument(
+        "--dir",
+        default=".",
+        metavar="DIR",
+        help="Project root to search for settings files (default: current directory).",
+    )
+    p_audit_any.add_argument(
+        "--families",
+        default="",
+        help="Comma-separated opt-in family names for Claude Code audits (e.g. 'security,issue').",
+    )
+    p_audit_any.set_defaults(func=_cmd_audit_any)
 
     p_audit_oc = subparsers.add_parser(
         "audit-opencode",

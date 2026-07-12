@@ -60,7 +60,7 @@ making every adopter benefit on their next
 
 Before running the default behaviour documented below, this
 skill consults
-[`.apache-magpie-overrides/setup-override-upstream.md`](../../docs/setup/agentic-overrides.md)
+[`.apache-magpie-local/setup-override-upstream.md`](../../docs/setup/agentic-overrides.md) (personal, gitignored) and [`.apache-magpie-overrides/setup-override-upstream.md`](../../docs/setup/agentic-overrides.md) (committed, project-wide)
 in the adopter repo if it exists, and applies any
 agent-readable overrides it finds. See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md)

@@ -14,10 +14,7 @@
     - [CVE authority](#cve-authority)
     - [Governance](#governance)
     - [Security inbox](#security-inbox)
-    - [Forwarders](#forwarders)
-    - [Mail provider](#mail-provider)
     - [Archive system](#archive-system)
-    - [Project metadata](#project-metadata)
     - [Tracker](#tracker)
     - [Scope detection](#scope-detection)
     - [Release process](#release-process)
@@ -46,11 +43,14 @@ See [`README.md`](README.md) for the fixture's purpose.
 | `short_name` | velox-stream |
 | `product_family_url` | https://velox-stream.example.io/ |
 
-This fixture **spells out every workflow knob explicitly** below, even
-the ones it would otherwise inherit from `organizations/independent/`,
-so the worked example is self-contained and the values are visible at a
-glance. A real adopter would omit the inherited keys and declare only
-its per-project values (see [`projects/_template/project.md`](../_template/project.md)).
+This fixture shows the **minimal per-project configuration** a real
+independent adopter would declare — only values that override or extend the
+[`organizations/independent/`](../../organizations/independent/) defaults.
+Org-level values (`cve_authority`, `forwarders`, `mail_provider`,
+`project_metadata`, and most of `archive_system` and `release_process`) are
+inherited from that manifest and not repeated here. See
+[`projects/_template/project.md`](../_template/project.md) for the full
+schema and field descriptions.
 
 ## Repositories
 
@@ -88,58 +88,29 @@ and has no public mailing lists.
 
 ## Security workflow configuration
 
+The blocks below declare only **per-project values** — overrides and
+extensions of what `organizations/independent/organization.md` already
+provides. Inherited keys (`forwarders`, `mail_provider`, `project_metadata`,
+and the base CVE/governance/inbox defaults) are omitted; the framework
+resolves them from the organization manifest automatically.
+
 ### CVE authority
 
 ```yaml
 cve_authority:
-  # Non-ASF adopter: direct MITRE CNA submission form, not Vulnogram.
-  tool: mitre-form
-
-  # Front-door allocation URL — MITRE's request form.
-  allocate_url: https://cveform.mitre.org/
-
-  # Record URL template — public cve.org record.
-  record_url_template: https://www.cve.org/CVERecord?id=<CVE-ID>
-
-  # No "source tab" equivalent; set to null.
-  source_tab_url_template: null
-
-  # No allocation email preview; set to null.
-  email_preview_url_template: null
-
-  # MITRE state machine maps to the generic 4-stop sequence.
+  # Override the independent-org 2-stop state machine: Velox uses MITRE's
+  # extended 4-stop sequence and polls for publication rather than waiting
+  # for manual notification.
   states: [allocated, review-ready, publish-ready, public]
-
-  # MITRE notifies by email; poll for public propagation.
   publication_propagation: poll
-
-  # MITRE does not auto-email on allocation.
-  emits_allocation_email: false
-
-  # Review happens in a private GitHub discussion thread, not a mailing list.
-  reviewer_channel: github-pr
 ```
 
 ### Governance
 
 ```yaml
 governance:
-  # Non-ASF: any security team member can allocate a CVE.
-  cve_allocation_gate: security-team-member
-
-  # Tracker label for security-team-member gate.
-  gate_label: "security-team"
-
-  # No formal release-vote gate.
-  release_vote_gating: false
-
-  # No private mailing list; use GitHub team DMs or a private channel.
-  private_governance_list: null
-
-  # Escalation contact (GitHub handle of the project lead).
+  # Per-project: escalation handle and public roster URL.
   escalation_contact: "@velox-lead"
-
-  # Public maintainer roster on GitHub.
   roster_url: https://github.com/orgs/velox-community/people
 ```
 
@@ -147,64 +118,16 @@ governance:
 
 ```yaml
 security_inbox:
-  # Non-ASF: GitHub Security Advisories (GHSA private reports), not email.
-  kind: ghsa-inbox
-
-  # GHSA inbox URL.
+  # Per-project: the concrete GHSA inbox URL for this repo.
   address: https://github.com/velox-community/velox-stream/security/advisories
-
-  # No foundation-level security address.
-  foundation_security_address: null
-
-  # No forwarder/relay layer.
-  has_forwarder_relay: false
-
-  # GHSA uses the platform's own notification channel, not a list filter.
-  list_filter_query: null
-```
-
-### Forwarders
-
-```yaml
-forwarders:
-  # Non-ASF: no forwarder/relay layer.
-  enabled: []
-```
-
-### Mail provider
-
-```yaml
-mail_provider:
-  # Non-ASF: no mail backend; security intake is entirely via GHSA.
-  primary: none
-  fallback: none
 ```
 
 ### Archive system
 
 ```yaml
 archive_system:
-  # Non-ASF: no public mailing-list archive. Announcements go on
-  # GitHub Releases.
-  kind: none
-  list_domain: null
-  search_url_template: null
-  api_query_url_template: null
+  # Per-project: where public advisories and release notes surface.
   advisory_publication_signal_url: https://github.com/velox-community/velox-stream/releases
-```
-
-### Project metadata
-
-```yaml
-project_metadata:
-  # Non-ASF: no apache-projects-mcp. Roster is supplied by maintainers
-  # via the release-trains.md file.
-  kind: none
-
-  # Not a pre-flight prerequisite (no ASF roster service available).
-  mandatory: false
-
-  install_source: null
 ```
 
 ### Tracker
@@ -246,16 +169,13 @@ scope_detection:
 
 ```yaml
 release_process:
-  # Non-ASF: RM lookup from a roster file only; no wiki or mailing-list thread.
-  release_manager_lookup_cascade:
-    - kind: roster_file
-      path: "release-trains.md"
-
-  # Artifacts published on PyPI only (no ArtifactHub / Helm chart).
+  # Override: PyPI only (independent-org default is []).
   artifact_registries: [pypi]
 
+  # Per-project: this project has no overdue milestones to track.
   stale_milestones: []
 
+  # Per-project: newsfragments tool.
   newsfragments:
     enabled: true
     tool: towncrier
@@ -265,9 +185,8 @@ release_process:
 
 ```yaml
 roster:
-  # Source of truth: a checked-in roster file.
-  source: roster-file:release-trains.md
-
+  # Per-project: name → handle map and release-manager list.
+  # roster.source is inherited from organizations/independent (roster-file).
   bare_name_handles:
     "Alex": "@alex-velox"
     "Robin": "@robin-velox"

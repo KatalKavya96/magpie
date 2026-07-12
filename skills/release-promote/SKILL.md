@@ -121,7 +121,7 @@ issue, comment thread, or config file).
 ## Adopter overrides
 
 Before running the default behaviour documented below, this skill consults
-[`.apache-magpie-overrides/release-promote.md`](../../docs/setup/agentic-overrides.md)
+[`.apache-magpie-local/release-promote.md`](../../docs/setup/agentic-overrides.md) (personal, gitignored) and [`.apache-magpie-overrides/release-promote.md`](../../docs/setup/agentic-overrides.md) (committed, project-wide)
 in the adopter repo if it exists, and applies any agent-readable overrides
 it finds.
 

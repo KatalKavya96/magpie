@@ -69,7 +69,8 @@ security ✅ 12 · pr-management ✅ 8 · issue ✅ 8 · release-management ✅ 
 ### Drift & integrity
 
 - **drift:** n/a (method:local …) · **snapshot:** in-repo source (local)
-- **overrides:** — · **hook:** —
+- **shared overrides** (`.apache-magpie-overrides/`): — · **personal overrides** (`.apache-magpie-local/`): —
+- **hook:** —
 - → deep check (integrity, permissions, worktrees): `/magpie-setup verify`
 ```
 
@@ -107,6 +108,8 @@ this before assigning health:
 | `gitignore.targets[].all_unignored` | ✅ expected — symlinks are committed | not the pattern used; ignore |
 | `gitignore.targets[].glob_ignored` + `setup_unignored` | not used | ✅ expected — symlinks gitignored, bootstrap tracked |
 | `drift.checked == false` | ✅ nothing to drift against | depends on `reason` (see [`collect.md`](collect.md#drift)) |
+| `local_overrides.present == false` | ✅ optional personal surface — not required | ✅ same — `.apache-magpie-local/` is always optional |
+| `gitignore.local_overrides_ignored == false` | advisory: add `/.apache-magpie-local/` to `.gitignore` | same advisory |
 
 Never report a self-adopted framework checkout as unhealthy merely
 for lacking a snapshot, a local lock, or ignored symlinks — those

@@ -128,7 +128,7 @@ belong to `release-keys-sync` (Step 3) and `release-rc-cut` (Steps 4–5).
 
 Before running the default behaviour documented below, this skill
 consults
-[`.apache-magpie-overrides/release-prepare.md`](../../docs/setup/agentic-overrides.md)
+[`.apache-magpie-local/release-prepare.md`](../../docs/setup/agentic-overrides.md) (personal, gitignored) and [`.apache-magpie-overrides/release-prepare.md`](../../docs/setup/agentic-overrides.md) (committed, project-wide)
 in the adopter repo if it exists, and applies any agent-readable
 overrides it finds.
 

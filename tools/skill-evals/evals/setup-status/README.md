@@ -5,7 +5,7 @@
 
 Behavioral evals for the `setup-status` skill.
 
-## Suites (14 cases total)
+## Suites (18 cases total)
 
 | Suite | Step | Cases | What it covers |
 |---|---|---|---|
@@ -13,6 +13,7 @@ Behavioral evals for the `setup-status` skill.
 | step-1-command | Step 1 (collector command selection) | 4 | default, --no-adjust, --format json, injection ignored |
 | step-2-present | Step 1 output rule (verbatim presentation) | 3 | standard, user requests summary, user requests reformat |
 | step-3-adjust-decision | Step 3 (adjust delta detection) | 4 | --no-adjust flag, clean state, target unwired, family not installed |
+| step-4-local-overrides | Step 1 (local override surface) | 4 | local absent, local present, both surfaces, gitignore missing |
 
 ## Run
 
@@ -65,3 +66,12 @@ Given invocation context and collected adoption state, the model detects configu
 - **case-2**: Clean state, no gaps → no offer (adoption fully wired).
 - **case-3**: Registry target `github` present on disk but unwired → offer add-target; delegate to `/magpie-setup adopt agents:universal,claude-code,github`.
 - **case-4**: Two opt-in families not installed → offer install-families; delegate to `/magpie-setup adopt skill-families:security,pr-management,issue`.
+
+### step-4-local-overrides
+
+Given the dashboard output (which now includes both `shared overrides` and `personal overrides` lines), the model correctly reads which override surfaces are present and how many skill files each contains.
+
+- **case-1**: `.apache-magpie-local/` absent, shared overrides present → `local_overrides_present: false`, `shared_overrides_present: true`.
+- **case-2**: `.apache-magpie-local/` present with 3 skills, no shared overrides → `local_overrides_present: true`, count 3.
+- **case-3**: Both surfaces present → `shared_overrides_present: true`, `local_overrides_present: true`.
+- **case-4**: Both present, `.gitignore` missing the local entry → still reads both as present; advisory is a separate concern.

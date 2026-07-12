@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0
      https://www.apache.org/licenses/LICENSE-2.0 -->
 
-# Step 7 output specification
+# Step 8 output specification
 
 The model must return ONLY valid JSON matching this schema:
 

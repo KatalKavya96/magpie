@@ -348,13 +348,39 @@ finished (PRINCIPLE 8, AGENTS.md § Reusable skills).
 
 ```text
 tools/skill-evals/evals/<skill-name>/
-├── eval.yaml           # eval harness config pointing at the skill
-└── cases/
-    ├── 01-happy-path.md     # the normal flow produces the right output
-    ├── 02-inject-attempt.md # prompt-injection attempt is flagged, not followed
-    ├── 03-empty-queue.md    # graceful no-op when nothing to do
-    └── 04-confirm-step.md   # agent pauses and waits, not auto-acts
+├── README.md
+└── <step-slug>/
+    └── fixtures/
+        ├── step-config.json          # { "skill_md": "...", "step_heading": "..." }
+        ├── output-spec.md            # JSON schema the step must return
+        ├── user-prompt-template.md   # user-facing prompt with {variable} slots
+        ├── case-1-normal/
+        │   ├── report.md             # realistic example input
+        │   └── expected.json         # expected structured output
+        ├── case-2-injection/
+        │   ├── report.md             # input containing a prompt-injection string
+        │   └── expected.json         # injection flagged, not followed
+        ├── case-3-empty-queue/
+        │   ├── report.md             # nothing to classify or act on
+        │   └── expected.json         # graceful no-op output
+        └── case-4-confirm-gate/
+            ├── report.md             # normal input requiring a state change
+            └── expected.json         # output shows draft, confirm not assumed
 ```
+
+`step-config.json` links each case to its skill step by pointing at the skill
+file and the heading that names the step:
+
+```json
+{
+  "skill_md": "skills/<skill-name>/SKILL.md",
+  "step_heading": "## Step N — <step title>"
+}
+```
+
+`output-spec.md` tells the model what JSON shape to return. `expected.json` in
+each case is a concrete instance of that shape — decision fields (enums,
+booleans, IDs) are compared exactly; prose fields are scored by a judge model.
 
 **A minimum eval suite has four cases:**
 

@@ -118,7 +118,7 @@ source.
 
 Before running the default behaviour documented below, this skill
 consults
-[`.apache-magpie-overrides/release-audit-report.md`](../../docs/setup/agentic-overrides.md)
+[`.apache-magpie-local/release-audit-report.md`](../../docs/setup/agentic-overrides.md) (personal, gitignored) and [`.apache-magpie-overrides/release-audit-report.md`](../../docs/setup/agentic-overrides.md) (committed, project-wide)
 in the adopter repo if it exists, and applies any agent-readable
 overrides it finds.
 

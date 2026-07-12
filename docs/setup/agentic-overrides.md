@@ -6,7 +6,8 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Agentic overrides — modifying framework workflows in an adopter](#agentic-overrides--modifying-framework-workflows-in-an-adopter)
-  - [Where override files live](#where-override-files-live)
+  - [Override surfaces — two directories, one lookup chain](#override-surfaces--two-directories-one-lookup-chain)
+    - [Adoption and `.gitignore`](#adoption-and-gitignore)
   - [What an override file may contain](#what-an-override-file-may-contain)
     - [Skip a step](#skip-a-step)
     - [Replace a step](#replace-a-step)
@@ -40,19 +41,52 @@ run-time and applies before executing default behaviour.
 This document is the **contract** between adopter authors of
 override files and framework authors of skills that read them.
 
-## Where override files live
+## Override surfaces — two directories, one lookup chain
+
+Framework skills consult **two** override directories in precedence
+order, first hit wins:
+
+1. **`.apache-magpie-local/<skill>.md`** — personal, gitignored.
+   Per-developer preferences (local clone paths, a release manager
+   enabling an extra MCP, wording adjustments) that should not be
+   committed to the shared repo.  Never committed; never pushed.
+   Works on a repo that has not yet adopted Magpie — the user adds
+   one `.gitignore` line by hand so the directory stays untracked,
+   then drops their overrides there.  The same additive-only
+   guardrail applies: it cannot weaken the safety, confidentiality,
+   or privacy baseline.
+
+2. **`.apache-magpie-overrides/<skill>.md`** — committed,
+   project-wide.  Shared modifications every contributor on the
+   project sees (custom steps, project-specific defaults, integrations
+   with project tooling).
 
 ```text
-<adopter-repo>/.apache-magpie-overrides/
-├── README.md                            (the dir's own readme,
-│                                          scaffolded by
-│                                          /magpie-setup adopt)
-├── <framework-skill-name>.md            (e.g. pr-management-triage.md)
-└── <other-framework-skill-name>.md
+<adopter-repo>/
+├── .apache-magpie-local/                (gitignored, per-person)
+│   └── <framework-skill-name>.md       (e.g. pr-management-triage.md)
+├── .apache-magpie-overrides/            (committed, project-wide)
+│   ├── README.md                        (scaffolded by /magpie-setup adopt)
+│   ├── <framework-skill-name>.md
+│   └── <other-framework-skill-name>.md
 ```
 
-The directory is **committed** in the adopter repo (the whole
-point is for overrides to ship with the project's repo).
+When both directories contain a file for the same skill, the
+personal-local file wins — its instructions are applied first,
+then (by default) the committed file's instructions are also applied
+unless the personal file explicitly says to skip it.  Neither file
+is required to exist; a skill that finds neither proceeds with
+framework defaults.
+
+### Adoption and `.gitignore`
+
+`/magpie-setup adopt` adds `/.apache-magpie-local/` to the adopter
+repo's `.gitignore` automatically.  On a repo that has not adopted
+Magpie, add the line manually:
+
+```text
+/.apache-magpie-local/
+```
 
 ## What an override file may contain
 
@@ -128,17 +162,24 @@ maintainer (or a future agent on a later run):
 Every framework skill that supports overrides starts each
 invocation with this opening protocol:
 
-1. Read `<adopter-repo>/.apache-magpie-overrides/<this-skill>.md`
-   if it exists. Surface the file's title and the list of
-   override headlines (`### Override N — ...`) to the user
-   before doing anything else.
-2. Apply the overrides: each `### Override N — ...` section
-   modifies the skill's default behaviour for this run. The
-   agent interprets the instructions in the override section
-   and adjusts the rest of the skill's flow accordingly.
-3. After the skill finishes, recap which overrides were
-   applied (and any the agent decided not to apply with the
-   reasoning), so the user has an audit trail.
+1. Read `<adopter-repo>/.apache-magpie-local/<this-skill>.md`
+   (personal, gitignored) if it exists.
+2. Read `<adopter-repo>/.apache-magpie-overrides/<this-skill>.md`
+   (committed, project-wide) if it exists.
+3. Surface the titles and override headlines
+   (`### Override N — ...`) from both files to the user
+   before doing anything else.  Indicate which file each
+   came from so the user can tell personal from shared
+   overrides at a glance.
+4. Apply both sets of overrides: personal-local first, then
+   committed.  Each `### Override N — ...` section modifies
+   the skill's default behaviour for this run.  The agent
+   interprets the instructions and adjusts the rest of the
+   skill's flow accordingly.
+5. After the skill finishes, recap which overrides were
+   applied (source file + override headline), and any the
+   agent decided not to apply with the reasoning, so the user
+   has an audit trail.
 
 A skill that does **not** yet support overrides documents
 that explicitly in its `SKILL.md`. The
@@ -155,7 +196,12 @@ A framework agent NEVER:
   `<adopter-repo>/.apache-magpie/`. The snapshot is a build
   artefact — every modification gets blown away on the next
   `/magpie-setup upgrade`. Local mods go into
-  `.apache-magpie-overrides/`.
+  `.apache-magpie-local/` (personal) or
+  `.apache-magpie-overrides/` (shared).
+- Commits or pushes `.apache-magpie-local/` content. The
+  personal override directory is gitignored by design — it
+  carries per-person paths, credentials, and capability
+  enablements the contributor has not chosen to share.
 - Proposes overrides be merged in by editing the framework
   source in the snapshot. Framework changes go via PR to
   `apache/magpie`.
@@ -165,6 +211,9 @@ A framework agent NEVER:
   human decide (the override expresses adopter intent —
   re-anchoring it correctly is human judgement, not
   pattern-matching).
+- Weakens the safety, confidentiality, or privacy baseline
+  from either override surface.  An override that attempts
+  to do so is ignored and the conflict is surfaced.
 
 ## Reconciliation on framework upgrade
 
@@ -246,6 +295,13 @@ this by:
 
 ## Cross-references
 
-- [`setup` skill](../../skills/setup/SKILL.md) — the entry point that manages the snapshot + scaffolds overrides.
-- [`overrides.md` sub-action](../../skills/setup/overrides.md) — interactive override creation.
+- [`setup` skill](../../skills/setup/SKILL.md) — the entry point
+  that manages the snapshot, scaffolds overrides, and adds the
+  `.gitignore` entries for both override directories.
+- [`overrides.md` sub-action](../../skills/setup/overrides.md) —
+  interactive override creation (lets the user choose between the
+  personal-local and committed surfaces).
 - [Top-level README](../../README.md) — adoption flow.
+- [`setup-status` skill](../../skills/setup-status/SKILL.md) —
+  the adoption dashboard, which reports whether both override
+  directories are present.

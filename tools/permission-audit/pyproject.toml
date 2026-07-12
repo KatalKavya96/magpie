@@ -21,7 +21,7 @@ build-backend = "hatchling.build"
 [project]
 name = "permission-audit"
 version = "0.1.0"
-description = "Audit + atomically edit Claude Code permissions.allow[] entries in .claude/settings*.json."
+description = "Harness-neutral permission audit: auto-detect and audit Claude Code, OpenCode, and future harness settings in one CLI call."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }

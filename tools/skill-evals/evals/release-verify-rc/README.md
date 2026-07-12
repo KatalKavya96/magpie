@@ -15,7 +15,7 @@ Behavioural eval suite for the
 | `step-3-verify-checksums` | Step 3 — Verify checksums | 2 | Checksum classification (PASS/MISMATCH/MISSING-DIGEST), deprecated md5 detection |
 | `step-5-notice-license` | Step 5 — NOTICE/LICENSE presence | 2 | File presence (PASS/WARN/FAIL), diff-lines count, diff summary |
 | `step-6-binary-exclusion` | Step 6 — Binary exclusion check | 2 | Prohibited-binary detection (PASS/FAIL), expected-binary classification |
-| `step-7-version-consistency` | Step 7 — Version string consistency | 2 | Exact version match across manifest files (PASS/FAIL) |
+| `step-8-version-consistency` | Step 8 — Version string consistency | 2 | Exact version match across manifest files (PASS/FAIL) |
 
 Total: **13 cases** across 6 step suites.
 
@@ -34,7 +34,7 @@ uv run --project tools/skill-evals skill-eval --cli tools/skill-evals/evals/rele
 
 ## Grading methodology
 
-Steps 0, 2, 3, 5, 6, and 7 all emit structured JSON. Cases use
+Steps 0, 2, 3, 5, 6, and 8 all emit structured JSON. Cases use
 `expected.json` for exact-field grading and `output-spec.md` to
 document the allowed schema.
 
@@ -61,5 +61,5 @@ are ignored; fields present in `expected.json` must match exactly
   `"WARN"` for material diffs; `"PASS"` for version-string-only diffs.
 - **Step 6**: `status` must be `"FAIL"` when `prohibited_found` is
   non-empty.
-- **Step 7**: `status` must be `"FAIL"` for any `match: false` or
+- **Step 8**: `status` must be `"FAIL"` for any `match: false` or
   `extracted: null`; dev/snapshot suffixes are always `match: false`.

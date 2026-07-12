@@ -59,12 +59,15 @@ it rather than duplicating its checks.
 ## Adopter overrides
 
 Before running the default behaviour documented below, this skill
-consults
-[`.apache-magpie-overrides/setup-status.md`](../../docs/setup/agentic-overrides.md)
-in the adopter repo if it exists, and applies any agent-readable
-overrides it finds. See
+consults (in order, first hit wins):
+
+1. `.apache-magpie-local/setup-status.md` — personal, gitignored.
+2. `.apache-magpie-overrides/setup-status.md` — committed,
+   project-wide.
+
+Both files are applied if present.  See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md)
-for the contract.
+for the full lookup contract.
 
 **Hard rule**: agents NEVER modify the snapshot under
 `<adopter-repo>/.apache-magpie/`. Local modifications go in the

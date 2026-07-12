@@ -306,7 +306,7 @@ diff context without re-running the full review pipeline.
 ## Adopter overrides
 
 Before running the default behaviour above, this skill consults
-`.apache-magpie-overrides/pairing-multi-agent-review.md` in the adopter repo if
+`.apache-magpie-local/pairing-multi-agent-review.md` (personal, gitignored) and `.apache-magpie-overrides/pairing-multi-agent-review.md` (committed, project-wide) in the adopter repo if
 it exists, and applies any agent-readable overrides it finds. See
 [`docs/setup/agentic-overrides.md`](../../docs/setup/agentic-overrides.md) for
 the contract. Hard rule: agents never modify the snapshot under

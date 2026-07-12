@@ -35,7 +35,8 @@ python3 <framework>/skills/setup-status/scripts/collect_status.py --format json 
 | `agent_targets` | One record per registry target (see below). |
 | `active_target_ids` | The subset of registry ids whose directory is present on disk. |
 | `families` | The installed-skill roster grouped by family (see below). |
-| `overrides` | `{present, has_readme}` for `.apache-magpie-overrides/`. |
+| `overrides` | `{present, has_readme, skill_count}` for `.apache-magpie-overrides/` (committed, shared). |
+| `local_overrides` | `{present, has_readme, skill_count}` for `.apache-magpie-local/` (gitignored, personal). Always reported; `present: false` when the directory does not exist. |
 | `post_checkout_hook` | `{present, executable, has_verify_recipe}`. |
 | `gitignore` | Coverage flags (see below). |
 
@@ -106,7 +107,9 @@ for the *intended* set, and use the on-disk read for the
 ## `gitignore`
 
 Top-level flags (`snapshot_ignored`, `local_lock_ignored`,
-`settings_local_ignored`) plus a per-target map. Each target
+`local_overrides_ignored`, `settings_local_ignored`) plus a
+per-target map.  `local_overrides_ignored` is `true` when
+`/.apache-magpie-local/` appears in `.gitignore`. Each target
 carries `glob_ignored` + `setup_unignored` (the **normal-adopter**
 pattern: ignore the symlinks, keep the bootstrap tracked) and
 `all_unignored` (the **self-adoption** pattern: every `magpie-*`
