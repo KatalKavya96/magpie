@@ -79,6 +79,12 @@ framework safe to use.
   `.apache-magpie-local/` personal config, then run skills as if
   adopted. No changes to the target repo's committed files (beyond the
   optional `.gitignore` line) and no opt-in from teammates required.
+- [**`per-role-mcp-access.md`**](per-role-mcp-access.md) — how to
+  enable an MCP server for yourself only (e.g. a release manager
+  enabling a Policy MCP, a security triage member enabling a
+  private CVE database) without touching shared project config:
+  register the server in user-scope Claude settings, then write a
+  personal `.apache-magpie-local/<skill>.md` override.
 
 ## Typical lifecycle
 
