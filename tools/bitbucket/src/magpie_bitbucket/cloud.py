@@ -54,6 +54,32 @@ def get_repository(config: BitbucketConfig) -> dict[str, Any]:
     return get_json(url, config)
 
 
+def get_repository_restrictions(config: BitbucketConfig) -> dict[str, Any]:
+    """Fetch branch restrictions from a Bitbucket Cloud repository."""
+    workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/branch-restrictions"
+
+    combined: dict[str, Any] = {
+        "values": [],
+        "paginated": True,
+        "pages": [],
+    }
+
+    seen_urls = {url}
+    while url:
+        page = get_json(url, config)
+        combined["pages"].append(page)
+
+        values = page.get("values")
+        if isinstance(values, list):
+            combined["values"].extend(item for item in values if isinstance(item, dict))
+
+        url = _validated_next_url(page.get("next"), seen_urls)
+
+    return combined
+
+
 def list_open_pull_requests(config: BitbucketConfig) -> dict[str, Any]:
     """List all open pull requests from Bitbucket Cloud."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))

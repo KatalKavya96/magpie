@@ -65,6 +65,27 @@ def repository(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def repository_restrictions(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize repository branch restrictions from Bitbucket."""
+    values = raw.get("values")
+    if not isinstance(values, list):
+        values = []
+
+    restrictions = [
+        _cloud_branch_restriction(item) if kind == "cloud" else _datacenter_branch_restriction(item)
+        for item in values
+        if isinstance(item, dict)
+    ]
+
+    return {
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "coverage": "partial-read-only",
+        "permission_required": _string(raw.get("permission_required")),
+        "restrictions": restrictions,
+        "raw": raw,
+    }
+
+
 def pull_request_summary(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     """Normalize one pull request as a read-only change-request summary."""
     if kind == "cloud":
@@ -1005,6 +1026,112 @@ def _cloud_user(raw: object) -> str | None:
     if not isinstance(raw, dict):
         return None
     return _string(raw.get("display_name") or raw.get("nickname") or raw.get("username") or raw.get("uuid"))
+
+
+def _cloud_branch_restriction(raw: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": _string(raw.get("id")),
+        "kind": _string(raw.get("kind") or raw.get("type")),
+        "pattern": _string(raw.get("pattern")),
+        "branch_match_kind": _string(raw.get("branch_match_kind")),
+        "branch_type": _string(raw.get("branch_type")),
+        "users": _cloud_users(raw.get("users")),
+        "groups": _cloud_groups(raw.get("groups")),
+        "value": raw.get("value"),
+        "raw": raw,
+    }
+
+
+def _datacenter_branch_restriction(raw: dict[str, Any]) -> dict[str, Any]:
+    matcher = raw.get("matcher")
+    matcher_data = matcher if isinstance(matcher, dict) else {}
+
+    return {
+        "id": _string(raw.get("id")),
+        "kind": _string(raw.get("type") or raw.get("kind")),
+        "pattern": _datacenter_matcher_pattern(matcher_data),
+        "branch_match_kind": _string(matcher_data.get("type") or matcher_data.get("displayId")),
+        "branch_type": _string(matcher_data.get("id")),
+        "users": _datacenter_users(raw.get("users")),
+        "groups": _datacenter_groups(raw.get("groups")),
+        "access_keys": _datacenter_access_keys(raw.get("accessKeys")),
+        "raw": raw,
+    }
+
+
+def _datacenter_matcher_pattern(raw: dict[str, Any]) -> str | None:
+    value = raw.get("displayId") or raw.get("id")
+    return _string(value)
+
+
+def _cloud_users(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    users: list[str] = []
+    for item in raw:
+        if isinstance(item, dict):
+            user = _cloud_user(item)
+            if user:
+                users.append(user)
+        elif isinstance(item, str):
+            users.append(item)
+    return users
+
+
+def _cloud_groups(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    groups: list[str] = []
+    for item in raw:
+        if isinstance(item, dict):
+            group = _string(item.get("name") or item.get("slug") or item.get("full_slug"))
+            if group:
+                groups.append(group)
+        elif isinstance(item, str):
+            groups.append(item)
+    return groups
+
+
+def _datacenter_users(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    users: list[str] = []
+    for item in raw:
+        if isinstance(item, dict):
+            user = _datacenter_user(item)
+            if user:
+                users.append(user)
+        elif isinstance(item, str):
+            users.append(item)
+    return users
+
+
+def _datacenter_groups(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    groups: list[str] = []
+    for item in raw:
+        if isinstance(item, dict):
+            group = _string(item.get("name") or item.get("slug"))
+            if group:
+                groups.append(group)
+        elif isinstance(item, str):
+            groups.append(item)
+    return groups
+
+
+def _datacenter_access_keys(raw: object) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    keys: list[str] = []
+    for item in raw:
+        if isinstance(item, dict):
+            key = _string(item.get("key") or item.get("label") or item.get("id"))
+            if key:
+                keys.append(key)
+        elif isinstance(item, str):
+            keys.append(item)
+    return keys
 
 
 def _cloud_branch(raw: object) -> str | None:

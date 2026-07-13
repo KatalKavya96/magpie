@@ -38,6 +38,43 @@ def get_repository(config: BitbucketConfig) -> dict[str, Any]:
     return get_json(url, config)
 
 
+def get_repository_restrictions(config: BitbucketConfig) -> dict[str, Any]:
+    """Fetch branch restrictions from a Bitbucket Data Center repository."""
+    project_key = quote_path(require(config.project_key, "BITBUCKET_PROJECT_KEY"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    base_url = f"{_api_base(config)}/projects/{project_key}/repos/{repo_slug}/branch-permissions/search"
+
+    start = 0
+    combined: dict[str, Any] = {
+        "values": [],
+        "paginated": True,
+        "pages": [],
+        "permission_required": "REPO_ADMIN",
+    }
+
+    while True:
+        page = get_json(f"{base_url}?start={start}", config)
+        combined["pages"].append(page)
+
+        values = page.get("values")
+        if isinstance(values, list):
+            combined["values"].extend(item for item in values if isinstance(item, dict))
+
+        if page.get("isLastPage") is True:
+            break
+
+        next_start = page.get("nextPageStart")
+        if not isinstance(next_start, int):
+            break
+
+        if next_start <= start:
+            break
+
+        start = next_start
+
+    return combined
+
+
 def list_open_pull_requests(config: BitbucketConfig) -> dict[str, Any]:
     """List all open pull requests from Bitbucket Data Center."""
     project_key = quote_path(require(config.project_key, "BITBUCKET_PROJECT_KEY"))
