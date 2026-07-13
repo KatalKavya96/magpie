@@ -164,6 +164,25 @@ def get_pull_request_reviews(config: BitbucketConfig, pull_request_id: str) -> d
     return combined
 
 
+def get_pull_request_merge_checks(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
+    """Fetch read-only merge-check context for a Bitbucket Cloud pull request."""
+    status = get_pull_request_status(config, pull_request_id)
+    reviews = get_pull_request_reviews(config, pull_request_id)
+
+    pull_request = status.get("pull_request")
+    if not isinstance(pull_request, dict):
+        pull_request = reviews.get("pull_request")
+    if not isinstance(pull_request, dict):
+        pull_request = {}
+
+    return {
+        "pull_request_id": pull_request_id,
+        "pull_request": pull_request,
+        "status": status,
+        "reviews": reviews,
+    }
+
+
 def get_pull_request_status(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
     """Fetch build statuses for a Bitbucket Cloud pull request."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))

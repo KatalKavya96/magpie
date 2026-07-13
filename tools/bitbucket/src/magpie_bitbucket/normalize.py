@@ -174,6 +174,50 @@ def pull_request_status(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def pull_request_merge_checks(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize read-only pull request merge-check context from Bitbucket."""
+    pull_request_raw = raw.get("pull_request")
+    pull_request = pull_request_raw if isinstance(pull_request_raw, dict) else {}
+
+    status_raw = raw.get("status")
+    if not isinstance(status_raw, dict):
+        status_raw = {
+            "pull_request_id": raw.get("pull_request_id"),
+            "pull_request": pull_request,
+            "values": [],
+        }
+
+    reviews_raw = raw.get("reviews")
+    if not isinstance(reviews_raw, dict):
+        reviews_raw = {
+            "pull_request_id": raw.get("pull_request_id"),
+            "pull_request": pull_request,
+            "values": [],
+        }
+
+    status = pull_request_status(kind, status_raw)
+    reviews = pull_request_reviews(kind, reviews_raw)
+    mergeable = _pull_request_mergeable(pull_request)
+    conflicted = _pull_request_conflicted(pull_request)
+    blockers = _merge_check_blockers(status, reviews, mergeable, conflicted)
+
+    return {
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "coverage": "partial-read-only",
+        "pull_request_id": _string(raw.get("pull_request_id")),
+        "state": _pull_request_state(kind, pull_request),
+        "mergeable": mergeable,
+        "conflicted": conflicted,
+        "blocked": bool(blockers),
+        "blockers": blockers,
+        "checks": status.get("checks"),
+        "review_decision": reviews.get("review_decision"),
+        "status": status,
+        "reviews": reviews,
+        "raw": raw,
+    }
+
+
 def pull_request_commits(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     """Normalize pull request commits from Bitbucket."""
     values = raw.get("values")
@@ -261,6 +305,99 @@ def pull_request_reviews(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
         "review_events": review_events,
         "raw": raw,
     }
+
+
+def _pull_request_mergeable(raw: dict[str, Any]) -> bool | str:
+    for key in ("mergeable", "can_merge", "canMerge"):
+        value = _boolish(raw.get(key))
+        if value is not None:
+            return value
+
+    properties = raw.get("properties")
+    if isinstance(properties, dict):
+        for key in ("mergeable", "can_merge", "canMerge"):
+            value = _boolish(properties.get(key))
+            if value is not None:
+                return value
+
+    return "unknown"
+
+
+def _pull_request_conflicted(raw: dict[str, Any]) -> bool | str:
+    for key in ("conflicted", "has_conflicts", "hasConflicts"):
+        value = _boolish(raw.get(key))
+        if value is not None:
+            return value
+
+    properties = raw.get("properties")
+    if isinstance(properties, dict):
+        for key in ("conflicted", "has_conflicts", "hasConflicts"):
+            value = _boolish(properties.get(key))
+            if value is not None:
+                return value
+
+    return "unknown"
+
+
+def _merge_check_blockers(
+    status: dict[str, Any],
+    reviews: dict[str, Any],
+    mergeable: bool | str,
+    conflicted: bool | str,
+) -> list[dict[str, Any]]:
+    blockers: list[dict[str, Any]] = []
+
+    if mergeable is False:
+        blockers.append(
+            {
+                "kind": "mergeability",
+                "state": "blocked",
+                "message": "Pull request is reported as not mergeable.",
+            }
+        )
+
+    if conflicted is True:
+        blockers.append(
+            {
+                "kind": "merge_conflict",
+                "state": "blocked",
+                "message": "Pull request is reported as conflicted.",
+            }
+        )
+
+    checks = status.get("checks")
+    if checks in {"failing", "pending"}:
+        blockers.append(
+            {
+                "kind": "status_checks",
+                "state": checks,
+                "message": f"Pull request status checks are {checks}.",
+            }
+        )
+
+    review_decision = reviews.get("review_decision")
+    if review_decision in {"changes_requested", "review_required"}:
+        blockers.append(
+            {
+                "kind": "reviews",
+                "state": review_decision,
+                "message": f"Pull request review decision is {review_decision}.",
+            }
+        )
+
+    return blockers
+
+
+def _boolish(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "1"}:
+            return True
+        if normalized in {"false", "no", "0"}:
+            return False
+    return None
 
 
 def _cloud_reviewers(raw: dict[str, Any]) -> list[dict[str, Any]]:

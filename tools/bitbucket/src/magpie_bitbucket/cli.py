@@ -72,6 +72,9 @@ def _build_parser() -> argparse.ArgumentParser:
     pr_reviews = pr_subparsers.add_parser("reviews", help="Fetch pull request review-state activity.")
     pr_reviews.add_argument("pull_request_id", help="Pull request ID to fetch review state for.")
 
+    pr_merge_checks = pr_subparsers.add_parser("merge-checks", help="Fetch pull request merge-check context.")
+    pr_merge_checks.add_argument("pull_request_id", help="Pull request ID to fetch merge-check context for.")
+
     pr_status = pr_subparsers.add_parser("status", help="Fetch pull request build/status checks.")
     pr_status.add_argument("pull_request_id", help="Pull request ID to fetch status checks for.")
 
@@ -117,6 +120,10 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
     if args.subcommand == "pr" and args.pr_action == "reviews":
         raw = backend.get_pull_request_reviews(config, args.pull_request_id)
         return normalize.pull_request_reviews(config.kind, raw)
+
+    if args.subcommand == "pr" and args.pr_action == "merge-checks":
+        raw = backend.get_pull_request_merge_checks(config, args.pull_request_id)
+        return normalize.pull_request_merge_checks(config.kind, raw)
 
     if args.subcommand == "pr" and args.pr_action == "status":
         raw = backend.get_pull_request_status(config, args.pull_request_id)
