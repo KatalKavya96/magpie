@@ -1050,7 +1050,7 @@ def _datacenter_branch_restriction(raw: dict[str, Any]) -> dict[str, Any]:
         "id": _string(raw.get("id")),
         "kind": _string(raw.get("type") or raw.get("kind")),
         "pattern": _datacenter_matcher_pattern(matcher_data),
-        "branch_match_kind": _string(matcher_data.get("type") or matcher_data.get("displayId")),
+        "branch_match_kind": _datacenter_matcher_type(matcher_data),
         "branch_type": _string(matcher_data.get("id")),
         "users": _datacenter_users(raw.get("users")),
         "groups": _datacenter_groups(raw.get("groups")),
@@ -1062,6 +1062,13 @@ def _datacenter_branch_restriction(raw: dict[str, Any]) -> dict[str, Any]:
 def _datacenter_matcher_pattern(raw: dict[str, Any]) -> str | None:
     value = raw.get("displayId") or raw.get("id")
     return _string(value)
+
+
+def _datacenter_matcher_type(raw: dict[str, Any]) -> str | None:
+    matcher_type = raw.get("type")
+    if isinstance(matcher_type, dict):
+        return _string(matcher_type.get("id") or matcher_type.get("name"))
+    return _string(matcher_type or raw.get("displayId"))
 
 
 def _cloud_users(raw: object) -> list[str]:

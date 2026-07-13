@@ -1959,7 +1959,11 @@ def test_normalize_datacenter_repository_restrictions() -> None:
                 {
                     "id": 9,
                     "type": "pull-request-only",
-                    "matcher": {"id": "refs/heads/main", "displayId": "main", "type": "BRANCH"},
+                    "matcher": {
+                        "id": "refs/heads/main",
+                        "displayId": "main",
+                        "type": {"id": "BRANCH", "name": "Branch"},
+                    },
                     "users": [{"displayName": "Reviewer One"}],
                     "groups": [{"name": "admins"}],
                     "accessKeys": [{"key": "deploy-key"}],

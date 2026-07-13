@@ -42,6 +42,10 @@ def get_repository_restrictions(config: BitbucketConfig) -> dict[str, Any]:
     """Fetch branch restrictions from a Bitbucket Data Center repository."""
     project_key = quote_path(require(config.project_key, "BITBUCKET_PROJECT_KEY"))
     repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    # Bitbucket Data Center Branch Permissions REST API:
+    # search repository branch restrictions using the branch-permissions resource.
+    # Atlassian documents this as REPO_ADMIN-gated even though this bridge only
+    # performs a read-only GET.
     base_url = f"{_api_base(config)}/projects/{project_key}/repos/{repo_slug}/branch-permissions/search"
 
     start = 0
