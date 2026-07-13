@@ -137,8 +137,18 @@ def get_pull_request_diff(config: BitbucketConfig, pull_request_id: str) -> dict
     }
 
 
+def get_pull_request_merge_status(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
+    """Test whether a Bitbucket Data Center pull request can be merged."""
+    project_key = quote_path(require(config.project_key, "BITBUCKET_PROJECT_KEY"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    pr_id = quote_path(pull_request_id)
+    url = f"{_api_base(config)}/projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_id}/merge"
+    return get_json(url, config)
+
+
 def get_pull_request_merge_checks(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
     """Fetch read-only merge-check context for a Bitbucket Data Center pull request."""
+    merge_status = get_pull_request_merge_status(config, pull_request_id)
     status = get_pull_request_status(config, pull_request_id)
     reviews = get_pull_request_reviews(config, pull_request_id)
 
@@ -151,6 +161,7 @@ def get_pull_request_merge_checks(config: BitbucketConfig, pull_request_id: str)
     return {
         "pull_request_id": pull_request_id,
         "pull_request": pull_request,
+        "merge": merge_status,
         "status": status,
         "reviews": reviews,
     }

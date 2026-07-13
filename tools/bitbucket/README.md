@@ -106,7 +106,7 @@ This first implementation covers read-only operations:
 6. **Pull-request diff fetch:** fetch the pull request unified diff as normalized read-only output.
 7. **Pull-request discussion fetch:** fetch a comments-only pull request discussion subset as normalized read-only output.
 8. **Pull-request review-state fetch:** fetch reviewers, approvals, change-request signals, pending review requests, and normalized review activity.
-9. **Pull-request merge-check context fetch:** fetch conservative read-only mergeability, conflict, status-check, and review blocker context.
+9. **Pull-request merge-check context fetch:** fetch known read-only mergeability, conflict, status-check, and review blocker context while preserving unknown values where the backend does not expose a clear signal.
 10. **Pull-request status fetch:** fetch build/status checks for the pull request as normalized read-only output.
 
 The bridge supports two Bitbucket API flavours behind one command
@@ -126,7 +126,7 @@ surface:
 | Change requests | `diff` supplement / `pr diff <id>` | Partial read-only | Fetches the pull request unified diff so partial Bitbucket `get` coverage can expose proposal diffs. This does not mutate files, branches, refs, or repository history. |
 | Change requests | `get_discussion` / `pr discussion <id>` | Partial read-only | Fetches a comments-only discussion subset with pagination. Participants beyond comment authors and unresolved-thread accounting remain incomplete. |
 | Change requests | `reviews` supplement / `pr reviews <id>` | Partial read-only | Fetches reviewers, approvals, change-request signals, pending review requests, normalized review events, and an aggregate review decision. This does not post reviews or mutate PR state. |
-| Change requests | `merge_checks` supplement / `pr merge-checks <id>` | Partial read-only | Fetches conservative merge-check context from known read-only signals, including reported mergeability/conflict fields, status checks, review decision, and normalized blockers. This does not merge or mutate PR state. |
+| Change requests | `merge_checks` supplement / `pr merge-checks <id>` | Partial read-only | Fetches known read-only merge-check context, including Data Center merge-test results, reported mergeability/conflict fields, status checks, review decision, and normalized blockers. Unknown backend signals remain unknown. This does not merge or mutate PR state. |
 | Change requests | `post_review` | Not implemented | Follow-up work for #606. |
 | Change requests | `land` | Not implemented | Follow-up work for #606. |
 | Change requests | `reject` | Not implemented | Follow-up work for #606. |

@@ -179,6 +179,9 @@ def pull_request_merge_checks(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     pull_request_raw = raw.get("pull_request")
     pull_request = pull_request_raw if isinstance(pull_request_raw, dict) else {}
 
+    merge_raw = raw.get("merge")
+    merge = merge_raw if isinstance(merge_raw, dict) else {}
+
     status_raw = raw.get("status")
     if not isinstance(status_raw, dict):
         status_raw = {
@@ -197,23 +200,28 @@ def pull_request_merge_checks(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
 
     status = pull_request_status(kind, status_raw)
     reviews = pull_request_reviews(kind, reviews_raw)
-    mergeable = _pull_request_mergeable(pull_request)
-    conflicted = _pull_request_conflicted(pull_request)
-    blockers = _merge_check_blockers(status, reviews, mergeable, conflicted)
+    can_merge = _pull_request_can_merge(pull_request, merge)
+    conflicted = _pull_request_conflicted(pull_request, merge)
+    mergeable = _mergeable_vocabulary(can_merge, conflicted)
+    blockers = _merge_check_blockers(status, reviews, merge, can_merge, conflicted)
+    merge_check_state = _merge_check_state(blockers, can_merge, conflicted, status, reviews)
 
     return {
         "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
         "coverage": "partial-read-only",
         "pull_request_id": _string(raw.get("pull_request_id")),
         "state": _pull_request_state(kind, pull_request),
+        "merge_check_state": merge_check_state,
+        "has_known_blockers": bool(blockers),
         "mergeable": mergeable,
+        "can_merge": can_merge,
         "conflicted": conflicted,
-        "blocked": bool(blockers),
         "blockers": blockers,
         "checks": status.get("checks"),
         "review_decision": reviews.get("review_decision"),
         "status": status,
         "reviews": reviews,
+        "merge": merge,
         "raw": raw,
     }
 
@@ -307,47 +315,58 @@ def pull_request_reviews(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _pull_request_mergeable(raw: dict[str, Any]) -> bool | str:
-    for key in ("mergeable", "can_merge", "canMerge"):
-        value = _boolish(raw.get(key))
-        if value is not None:
-            return value
-
-    properties = raw.get("properties")
-    if isinstance(properties, dict):
-        for key in ("mergeable", "can_merge", "canMerge"):
-            value = _boolish(properties.get(key))
+def _pull_request_can_merge(pull_request: dict[str, Any], merge: dict[str, Any]) -> bool | None:
+    for source in (merge, pull_request):
+        for key in ("canMerge", "can_merge", "mergeable"):
+            value = _boolish(source.get(key))
             if value is not None:
                 return value
 
-    return "unknown"
+        properties = source.get("properties")
+        if isinstance(properties, dict):
+            for key in ("canMerge", "can_merge", "mergeable"):
+                value = _boolish(properties.get(key))
+                if value is not None:
+                    return value
+
+    return None
 
 
-def _pull_request_conflicted(raw: dict[str, Any]) -> bool | str:
-    for key in ("conflicted", "has_conflicts", "hasConflicts"):
-        value = _boolish(raw.get(key))
-        if value is not None:
-            return value
-
-    properties = raw.get("properties")
-    if isinstance(properties, dict):
+def _pull_request_conflicted(pull_request: dict[str, Any], merge: dict[str, Any]) -> bool | None:
+    for source in (merge, pull_request):
         for key in ("conflicted", "has_conflicts", "hasConflicts"):
-            value = _boolish(properties.get(key))
+            value = _boolish(source.get(key))
             if value is not None:
                 return value
 
+        properties = source.get("properties")
+        if isinstance(properties, dict):
+            for key in ("conflicted", "has_conflicts", "hasConflicts"):
+                value = _boolish(properties.get(key))
+                if value is not None:
+                    return value
+
+    return None
+
+
+def _mergeable_vocabulary(can_merge: bool | None, conflicted: bool | None) -> str:
+    if conflicted is True:
+        return "conflicting"
+    if can_merge is True and conflicted is not True:
+        return "clean"
     return "unknown"
 
 
 def _merge_check_blockers(
     status: dict[str, Any],
     reviews: dict[str, Any],
-    mergeable: bool | str,
-    conflicted: bool | str,
+    merge: dict[str, Any],
+    can_merge: bool | None,
+    conflicted: bool | None,
 ) -> list[dict[str, Any]]:
     blockers: list[dict[str, Any]] = []
 
-    if mergeable is False:
+    if can_merge is False:
         blockers.append(
             {
                 "kind": "mergeability",
@@ -364,6 +383,8 @@ def _merge_check_blockers(
                 "message": "Pull request is reported as conflicted.",
             }
         )
+
+    blockers.extend(_merge_veto_blockers(merge))
 
     checks = status.get("checks")
     if checks in {"failing", "pending"}:
@@ -386,6 +407,50 @@ def _merge_check_blockers(
         )
 
     return blockers
+
+
+def _merge_veto_blockers(merge: dict[str, Any]) -> list[dict[str, Any]]:
+    vetoes = merge.get("vetoes")
+    if not isinstance(vetoes, list):
+        return []
+
+    blockers: list[dict[str, Any]] = []
+    for veto in vetoes:
+        if not isinstance(veto, dict):
+            continue
+        summary = _string(veto.get("summaryMessage") or veto.get("summary"))
+        details = _string(veto.get("detailedMessage") or veto.get("details"))
+        blockers.append(
+            {
+                "kind": "merge_veto",
+                "state": "blocked",
+                "message": summary or details or "Bitbucket reported a merge veto.",
+                "details": details,
+                "raw": veto,
+            }
+        )
+
+    return blockers
+
+
+def _merge_check_state(
+    blockers: list[dict[str, Any]],
+    can_merge: bool | None,
+    conflicted: bool | None,
+    status: dict[str, Any],
+    reviews: dict[str, Any],
+) -> str:
+    if blockers:
+        return "blocked"
+
+    known_clean_merge = can_merge is True and conflicted is not True
+    checks_known_clean = status.get("checks") in {"none", "passing"}
+    review_known_clean = reviews.get("review_decision") in {"approved", "unknown"}
+
+    if known_clean_merge and checks_known_clean and review_known_clean:
+        return "passing"
+
+    return "unknown"
 
 
 def _boolish(value: object) -> bool | None:
