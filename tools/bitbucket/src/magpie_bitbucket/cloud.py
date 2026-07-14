@@ -80,6 +80,41 @@ def get_repository_restrictions(config: BitbucketConfig) -> dict[str, Any]:
     return combined
 
 
+def list_open_issues(config: BitbucketConfig) -> dict[str, Any]:
+    """List open issues from a Bitbucket Cloud repository."""
+    workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/issues?q=state%3D%22new%22%20OR%20state%3D%22open%22"
+
+    combined: dict[str, Any] = {
+        "values": [],
+        "paginated": True,
+        "pages": [],
+    }
+
+    seen_urls = {url}
+    while url:
+        page = get_json(url, config)
+        combined["pages"].append(page)
+
+        values = page.get("values")
+        if isinstance(values, list):
+            combined["values"].extend(item for item in values if isinstance(item, dict))
+
+        url = _validated_next_url(page.get("next"), seen_urls)
+
+    return combined
+
+
+def get_issue(config: BitbucketConfig, issue_id: str) -> dict[str, Any]:
+    """Fetch one issue from a Bitbucket Cloud repository."""
+    workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    issue = quote_path(issue_id)
+    url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/issues/{issue}"
+    return get_json(url, config)
+
+
 def list_open_pull_requests(config: BitbucketConfig) -> dict[str, Any]:
     """List all open pull requests from Bitbucket Cloud."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))

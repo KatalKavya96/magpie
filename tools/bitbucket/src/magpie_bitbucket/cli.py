@@ -54,6 +54,13 @@ def _build_parser() -> argparse.ArgumentParser:
     repo_subparsers.add_parser("get", help="Fetch repository metadata.")
     repo_subparsers.add_parser("restrictions", help="Fetch repository branch restrictions.")
 
+    issue_parser = subparsers.add_parser("issue", help="Interact with Bitbucket issues.")
+    issue_subparsers = issue_parser.add_subparsers(dest="issue_action", required=True)
+    issue_subparsers.add_parser("list-open", help="List open issues.")
+
+    issue_get = issue_subparsers.add_parser("get", help="Fetch one issue.")
+    issue_get.add_argument("issue_id", help="Issue ID to fetch.")
+
     pr_parser = subparsers.add_parser("pr", help="Interact with Bitbucket pull requests.")
     pr_subparsers = pr_parser.add_subparsers(dest="pr_action", required=True)
     pr_subparsers.add_parser("list-open", help="List open pull requests.")
@@ -101,6 +108,14 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
     if args.subcommand == "repo" and args.repo_action == "restrictions":
         raw = backend.get_repository_restrictions(config)
         return normalize.repository_restrictions(config.kind, raw)
+
+    if args.subcommand == "issue" and args.issue_action == "list-open":
+        raw = backend.list_open_issues(config)
+        return normalize.issue_list(config.kind, raw)
+
+    if args.subcommand == "issue" and args.issue_action == "get":
+        raw = backend.get_issue(config, args.issue_id)
+        return normalize.issue(config.kind, raw)
 
     if args.subcommand == "pr" and args.pr_action == "list-open":
         raw = backend.list_open_pull_requests(config)
