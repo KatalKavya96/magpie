@@ -37,6 +37,7 @@ from magpie_bitbucket.normalize import (
     pull_request_reviews,
     pull_request_status,
     repository,
+    repository_restrictions,
 )
 
 
@@ -1866,3 +1867,155 @@ def test_cli_pr_merge_checks_datacenter(datacenter_env: None, capsys: pytest.Cap
     assert output["backend"] == "bitbucket-datacenter"
     assert output["merge_check_state"] == "passing"
     assert output["mergeable"] == "clean"
+
+
+@patch("urllib.request.build_opener")
+def test_cloud_get_repository_restrictions_follows_next(
+    mock_build_opener: MagicMock, cloud_env: None
+) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {
+            "values": [{"id": 1, "kind": "push", "pattern": "main"}],
+            "next": "https://api.bitbucket.org/2.0/repositories/apache/magpie/branch-restrictions?page=2",
+        },
+        {"values": [{"id": 2, "kind": "force", "pattern": "release/*"}]},
+    )
+
+    result = cloud.get_repository_restrictions(load_config())
+
+    first_request = opener.open.call_args_list[0].args[0]
+    second_request = opener.open.call_args_list[1].args[0]
+    assert first_request.full_url == (
+        "https://api.bitbucket.org/2.0/repositories/apache/magpie/branch-restrictions"
+    )
+    assert second_request.full_url.endswith("branch-restrictions?page=2")
+    assert result["values"] == [
+        {"id": 1, "kind": "push", "pattern": "main"},
+        {"id": 2, "kind": "force", "pattern": "release/*"},
+    ]
+
+
+@patch("urllib.request.build_opener")
+def test_datacenter_get_repository_restrictions_paginates(
+    mock_build_opener: MagicMock, datacenter_env: None
+) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {
+            "values": [{"id": 1, "type": "read-only"}],
+            "isLastPage": False,
+            "nextPageStart": 25,
+        },
+        {"values": [{"id": 2, "type": "pull-request-only"}], "isLastPage": True},
+    )
+
+    result = datacenter.get_repository_restrictions(load_config())
+
+    first_request = opener.open.call_args_list[0].args[0]
+    second_request = opener.open.call_args_list[1].args[0]
+    assert first_request.full_url == (
+        "https://bitbucket.example.test/rest/api/1.0/projects/MAGPIE/repos/magpie/"
+        "branch-permissions/search?start=0"
+    )
+    assert second_request.full_url.endswith("branch-permissions/search?start=25")
+    assert result["permission_required"] == "REPO_ADMIN"
+    assert result["values"] == [
+        {"id": 1, "type": "read-only"},
+        {"id": 2, "type": "pull-request-only"},
+    ]
+
+
+def test_normalize_cloud_repository_restrictions() -> None:
+    normalized = repository_restrictions(
+        "cloud",
+        {
+            "values": [
+                {
+                    "id": 1,
+                    "kind": "push",
+                    "pattern": "main",
+                    "users": [{"display_name": "Reviewer One"}],
+                    "groups": [{"name": "admins"}],
+                }
+            ]
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-cloud"
+    assert normalized["coverage"] == "partial-read-only"
+    assert normalized["restrictions"][0]["kind"] == "push"
+    assert normalized["restrictions"][0]["pattern"] == "main"
+    assert normalized["restrictions"][0]["users"] == ["Reviewer One"]
+    assert normalized["restrictions"][0]["groups"] == ["admins"]
+
+
+def test_normalize_datacenter_repository_restrictions() -> None:
+    normalized = repository_restrictions(
+        "datacenter",
+        {
+            "permission_required": "REPO_ADMIN",
+            "values": [
+                {
+                    "id": 9,
+                    "type": "pull-request-only",
+                    "matcher": {
+                        "id": "refs/heads/main",
+                        "displayId": "main",
+                        "type": {"id": "BRANCH", "name": "Branch"},
+                    },
+                    "users": [{"displayName": "Reviewer One"}],
+                    "groups": [{"name": "admins"}],
+                    "accessKeys": [{"key": "deploy-key"}],
+                }
+            ],
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-datacenter"
+    assert normalized["permission_required"] == "REPO_ADMIN"
+    restriction = normalized["restrictions"][0]
+    assert restriction["kind"] == "pull-request-only"
+    assert restriction["pattern"] == "main"
+    assert restriction["branch_match_kind"] == "BRANCH"
+    assert restriction["branch_type"] == "refs/heads/main"
+    assert restriction["users"] == ["Reviewer One"]
+    assert restriction["groups"] == ["admins"]
+    assert restriction["access_keys"] == ["deploy-key"]
+
+
+@patch("magpie_bitbucket.cloud.get_repository_restrictions")
+def test_cli_repo_restrictions_cloud(
+    mock_get_repository_restrictions: MagicMock,
+    cloud_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_get_repository_restrictions.return_value = {"values": [{"id": 1, "kind": "push", "pattern": "main"}]}
+
+    exit_code = main(["repo", "restrictions"])
+
+    assert exit_code == 0
+    mock_get_repository_restrictions.assert_called_once()
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-cloud"
+    assert output["restrictions"][0]["pattern"] == "main"
+
+
+@patch("magpie_bitbucket.datacenter.get_repository_restrictions")
+def test_cli_repo_restrictions_datacenter(
+    mock_get_repository_restrictions: MagicMock,
+    datacenter_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_get_repository_restrictions.return_value = {
+        "permission_required": "REPO_ADMIN",
+        "values": [{"id": 9, "type": "read-only"}],
+    }
+
+    exit_code = main(["repo", "restrictions"])
+
+    assert exit_code == 0
+    mock_get_repository_restrictions.assert_called_once()
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-datacenter"
+    assert output["permission_required"] == "REPO_ADMIN"

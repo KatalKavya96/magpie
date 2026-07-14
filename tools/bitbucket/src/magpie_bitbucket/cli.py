@@ -52,6 +52,7 @@ def _build_parser() -> argparse.ArgumentParser:
     repo_parser = subparsers.add_parser("repo", help="Interact with Bitbucket repositories.")
     repo_subparsers = repo_parser.add_subparsers(dest="repo_action", required=True)
     repo_subparsers.add_parser("get", help="Fetch repository metadata.")
+    repo_subparsers.add_parser("restrictions", help="Fetch repository branch restrictions.")
 
     pr_parser = subparsers.add_parser("pr", help="Interact with Bitbucket pull requests.")
     pr_subparsers = pr_parser.add_subparsers(dest="pr_action", required=True)
@@ -96,6 +97,10 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
     if args.subcommand == "repo" and args.repo_action == "get":
         raw = backend.get_repository(config)
         return normalize.repository(config.kind, raw)
+
+    if args.subcommand == "repo" and args.repo_action == "restrictions":
+        raw = backend.get_repository_restrictions(config)
+        return normalize.repository_restrictions(config.kind, raw)
 
     if args.subcommand == "pr" and args.pr_action == "list-open":
         raw = backend.list_open_pull_requests(config)
