@@ -2039,7 +2039,7 @@ def test_cloud_list_open_issues_follows_next(mock_build_opener: MagicMock, cloud
     first_request = opener.open.call_args_list[0].args[0]
     second_request = opener.open.call_args_list[1].args[0]
     assert first_request.full_url == (
-        "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues?q=state%3D%22new%22%20OR%20state%3D%22open%22"
+        "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues?q=state%3D%22new%22%20OR%20state%3D%22open%22%20OR%20state%3D%22on%20hold%22"
     )
     assert second_request.full_url.endswith("/issues?page=2")
     assert result["values"] == [

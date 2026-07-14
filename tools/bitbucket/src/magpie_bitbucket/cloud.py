@@ -84,7 +84,7 @@ def list_open_issues(config: BitbucketConfig) -> dict[str, Any]:
     """List open issues from a Bitbucket Cloud repository."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
     repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
-    url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/issues?q=state%3D%22new%22%20OR%20state%3D%22open%22"
+    url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/issues?q=state%3D%22new%22%20OR%20state%3D%22open%22%20OR%20state%3D%22on%20hold%22"
 
     combined: dict[str, Any] = {
         "values": [],
