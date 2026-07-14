@@ -141,11 +141,12 @@ This skill resolves project-specific content from the adopter's
 
 - [`<project-config>/pr-management-config.md`](../../projects/_template/pr-management-config.md) — committers team handle, area-label prefix, project-specific labels (`ready for maintainer review`, etc.), grace windows.
 - [`<project-config>/pr-management-triage-comment-templates.md`](../../projects/_template/pr-management-triage-comment-templates.md) — comment-body URLs (PR quality criteria, two-stage triage rationale), AI-attribution footer wording, project display name.
-- [`<project-config>/pr-management-triage-ci-check-map.md`](../../projects/_template/pr-management-triage-ci-check-map.md) — CI-check name pattern → category name + doc-URL mapping for the violations comment.
+- [`<project-config>/pr-management-triage-ci-check-map.md`](../../projects/_template/pr-management-triage-ci-check-map.md) — (Optional) CI-check name pattern → category name + doc-URL mapping for the violations comment. If absent, the skill defaults to reporting all failing CI checks as "Failing CI checks" pointing to the generic `upstream_contributing_docs_url` in `project.md`.
 
 The skill reads all project-specific content (comment bodies, CI
 patterns, team handles, doc URLs) from the files listed above.
-No defaults are baked into the framework — every adopter provides
+If the optional CI check map file is absent, generic fallbacks are used.
+No other defaults are baked into the framework — every adopter provides
 their own values in `<project-config>/`.
 
 ---

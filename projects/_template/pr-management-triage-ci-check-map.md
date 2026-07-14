@@ -26,35 +26,15 @@ the GitHub check names your CI actually emits.
 
 ## Table
 
-Each row maps a **GitHub check name pattern** (case-insensitive
-substring match) to a **human-readable category name** the skill
-prints in the violations comment, plus a **doc URL** the skill
-links to.
+Each row maps a **GitHub check name pattern** (case-insensitive substring match) to a **human-readable category name** the skill prints in the violations comment, plus a **doc URL** the skill links to.
 
-The rows below are common starting points across Python / cloud-
-native projects. Add project-specific rows above the catch-all
-(`*`) row, and order more-specific patterns above broader ones —
-the skill matches first-found, so a row scoped to a sub-project
-must precede the generic prefix row if you want them split out
-in the violations comment.
+By default, the table contains only a catch-all pattern (`*`) pointing to `<upstream_contributing_docs_url>`, reducing duplication and maintenance. If your project has distinct contributing or troubleshooting documents for different areas (e.g. static checks vs unit tests), you can add finer-grained rows above the catch-all. More-specific patterns must precede broader ones.
 
 | Pattern | Category | Doc URL |
 |---|---|---|
-| `static checks`, `pre-commit`, `prek` | Pre-commit / static checks | `<static-checks-doc-url>` |
-| `ruff` | Ruff (linting / formatting) | `<static-checks-doc-url>` |
-| `mypy-` | mypy (type checking) | `<static-checks-doc-url>` |
-| `unit test`, `test-` | Unit tests | `<unit-tests-doc-url>` |
-| `docs`, `spellcheck-docs`, `build-docs` | Build docs | `<docs-building-doc-url>` |
-| `helm` | Helm tests | `<helm-tests-doc-url>` |
-| `k8s`, `kubernetes` | Kubernetes tests | `<k8s-tests-doc-url>` |
-| `build ci image`, `build prod image`, `ci-image`, `prod-image` | Image build | `<image-build-doc-url>` |
-| `*` (catch-all) | Other failing CI checks | `<static-checks-doc-url>` |
+| `*` (catch-all) | Failing CI checks | `<upstream_contributing_docs_url>` |
 
-Add additional rows for project-specific check-name patterns
-above the catch-all. For example, a project with a plugin /
-extension subsystem typically wants a row matching the relevant
-GitHub check names (`<your-plugin-tag>`, `<extension-name>`,
-etc.) pointing at the corresponding contributing doc:
+Add additional rows for project-specific check-name patterns above the catch-all when finer categorisation is desired:
 
 ```markdown
 | `<your-check-name-substring>` | <Human category> | <doc-url> |

@@ -531,7 +531,7 @@ direction) hits one of: `static check`, `pre-commit`, `lint`,
 `codespell`, `yamllint`, `shellcheck`, `spellcheck`,
 `spelling`, `build documentation`, `build docs`, `build-docs`.
 Additional patterns may be configured in
-`<project-config>/pr-management-triage-ci-check-map.md`.
+`<project-config>/pr-management-triage-ci-check-map.md` (optional). If the file is absent, only these built-in static check patterns are matched.
 
 The doc-build / spellcheck patterns are included in the
 framework defaults because the failure mode is symmetric with

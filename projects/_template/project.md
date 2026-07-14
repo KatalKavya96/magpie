@@ -44,6 +44,16 @@ reads the project name from `<project-config>/project.md` and then loads this ma
 repositories, mailing lists, and references to the other files in
 this directory.
 
+**Note on Auto-sourcing:** Stable fields under Identity and Repositories
+(`upstream_repo`, `upstream_default_branch`, `product_family_url`, labels)
+can be automatically derived from GitHub repository metadata via
+`gh repo view` during `/magpie-setup adopt` or `/magpie-setup upgrade`, for
+any adopter. The **Mailing lists** are auto-sourced **only for
+`organization: ASF`** projects (from `.asf.yaml`, with `*.apache.org`
+defaults); a non-ASF `organization` fills them in by hand. Hand-editing is
+only required when a source is absent, incomplete, or you wish to override
+a derived value.
+
 Grep for `TODO` to see every field you still need to fill in:
 
 ```bash
@@ -55,10 +65,10 @@ grep -n TODO projects/<name>/project.md
 | Key | Value |
 |---|---|
 | `organization` | TODO: the organization whose defaults this project inherits — e.g. `ASF` ([`organizations/ASF/`](../../organizations/ASF/)). Default `independent` ([`organizations/independent/`](../../organizations/independent/)). See [`organizations/README.md`](../../organizations/README.md). |
-| `project_name` | TODO: e.g. `Apache Foo` |
-| `vendor` | TODO: e.g. `Apache Software Foundation` |
-| `short_name` | TODO: e.g. `Foo` |
-| `product_family_url` | TODO: e.g. `https://foo.apache.org/` |
+| `project_name` | TODO: e.g. `Apache Foo` (can be auto-sourced from repo description or name) |
+| `vendor` | TODO: e.g. `Apache Software Foundation` (auto-derived if organization is ASF) |
+| `short_name` | TODO: e.g. `Foo` (can be auto-sourced from repo name) |
+| `product_family_url` | TODO: e.g. `https://foo.apache.org/` (auto-sourced from repo homepage) |
 
 The `vendor` / `project_name` pair is what lands in the `vendor` and
 `product` fields of the CVE 5.x record the CVE-JSON generator
@@ -72,9 +82,9 @@ produces.
 | `tracker_repo_url` | TODO | |
 | `tracker_default_branch` | TODO: e.g. `main` | Default PR target for the tracker repo |
 | `tracker_project_board_url` | TODO: URL of the GitHub Project V2 board, if any | Security board |
-| `upstream_repo` | TODO: e.g. `apache/foo` | Public codebase where fixes land |
+| `upstream_repo` | TODO: e.g. `apache/foo` (auto-sourced from repo name/git remote) | Public codebase where fixes land |
 | `upstream_repo_url` | TODO | |
-| `upstream_default_branch` | TODO: e.g. `master` (older default) or `main` | Upstream's default branch — what `<default-branch>` resolves to. Distinct from `tracker_default_branch` (the security tracker repo's PR target) |
+| `upstream_default_branch` | TODO: e.g. `master` or `main` (auto-sourced from repo metadata default branch) | Upstream's default branch — what `<default-branch>` resolves to. Distinct from `tracker_default_branch` |
 | `upstream_agents_md_url` | TODO: `https://github.com/<upstream>/blob/main/AGENTS.md` | Conventions this repo mirrors |
 | `upstream_contributing_docs_url` | TODO | |
 | `upstream_genai_disclosure_anchor` | TODO: URL + anchor for the project's Gen-AI disclosure guideline | |
@@ -82,14 +92,18 @@ produces.
 
 ## Mailing lists
 
+*(For `organization: ASF` projects only: auto-sourced from the `.asf.yaml`
+`notifications:` block if present, else `*.apache.org` defaults. A non-ASF
+`organization` has no `.asf.yaml` — fill these in by hand.)*
+
 | Key | Value | Notes |
 |---|---|---|
-| `security_list` | TODO: e.g. `security@foo.apache.org` | Inbound reports; **not** publicly archived |
-| `private_list` | TODO: e.g. `private@foo.apache.org` | PMC escalation; **not** publicly archived |
-| `users_list` | TODO: e.g. `users@foo.apache.org` | Public advisories end up here; publicly archived |
-| `dev_list` | TODO: e.g. `dev@foo.apache.org` | Release `[RESULT][VOTE]` threads; publicly archived |
+| `security_list` | TODO: e.g. `security@foo.apache.org` | Inbound reports; **not** publicly archived (auto-sourced default) |
+| `private_list` | TODO: e.g. `private@foo.apache.org` | PMC escalation; **not** publicly archived (auto-sourced default) |
+| `users_list` | TODO: e.g. `users@foo.apache.org` | Public advisories end up here; publicly archived (auto-sourced from `.asf.yaml` or default) |
+| `dev_list` | TODO: e.g. `dev@foo.apache.org` | Release `[RESULT][VOTE]` threads; publicly archived (auto-sourced from `.asf.yaml` or default) |
 | `announce_list` | TODO: e.g. `announce@apache.org` | Cross-project announcement list; publicly archived |
-| `commits_list` | TODO: e.g. `commits@foo.apache.org` | Publicly archived |
+| `commits_list` | TODO: e.g. `commits@foo.apache.org` | Publicly archived (auto-sourced from `.asf.yaml`) |
 
 Only URLs on publicly archived lists may appear in CVE `references[]` as
 `vendor-advisory`; see `../../AGENTS.md` and

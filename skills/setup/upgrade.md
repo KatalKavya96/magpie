@@ -711,6 +711,19 @@ newly-`provides`-d source skill picks up its per-worktree symlink
 on its next `worktree-init` or
 `/magpie-setup verify --auto-fix-symlinks`.
 
+## Step 6g — Re-derive auto-sourced configuration fields (drift reconciliation)
+
+If live metadata is accessible via `gh repo view`:
+1. **Re-derive the stable fields**, following the same organization split as
+   [`adopt.md` Step 4b](adopt.md#step-4b--read-fit-signals-fresh-only):
+   - *Organization-agnostic* (any adopter): repo name, default branch,
+     homepage/product URL, labels — from GitHub repo metadata.
+   - *ASF-specific* (**only when `organization: ASF`**): mailing lists from
+     `.asf.yaml`. Skip the `.asf.yaml`/mailing-list re-derivation for a
+     non-ASF `organization` — there is nothing to reconcile against.
+2. **Detect config drift**: Compare these re-derived values against the committed values in `.apache-magpie-overrides/project.md`.
+3. **Surface and reconcile**: If any value has changed (e.g., branch renamed, or — for ASF projects — a mailing-list address updated in `.asf.yaml`), display the drift to the user. Offer to update `.apache-magpie-overrides/project.md` with the new values in place. If confirmed by the user, write the updated configuration to `.apache-magpie-overrides/project.md` and stage the file (`git add`).
+
 ## Step 7 — Update `<local-lock>`
 
 Write the new local lock with the values captured in Step

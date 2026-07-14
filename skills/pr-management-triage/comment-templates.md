@@ -910,18 +910,17 @@ The category / explanation / doc-link triples come from
 `assess_pr_unresolved_comments`-equivalent logic — this skill
 reproduces those deterministic assessments without the LLM
 layer.  The canonical categories and their doc links are read
-from `<project-config>/pr-management-triage-ci-check-map.md` at
-session start.  The skill matches failed check names against
-the patterns in that file (first-match-wins) and uses the
-corresponding category name + doc URL for the violation bullet.
+from `<project-config>/pr-management-triage-ci-check-map.md` (optional) at
+session start. If this file is absent or lacks specific matches, the skill matches failed check names against the patterns in that file if present, and falls back as follows:
+- **Fallback / Default:** Any failing CI check maps to the category `Failing CI checks` (or specific category if matched) and the doc URL `<upstream_contributing_docs_url>` from `project.md`.
+- **Merge Conflicts:** If `mergeable == CONFLICTING`, it maps to category `Merge conflicts` and falls back to the same `<upstream_contributing_docs_url>` doc URL.
 
-The table below shows the **shape** of the mapping; concrete
-values live in the adopter config:
+The table below shows the **shape** of the mapping when the file is present:
 
 | Category | Signal | Doc link source |
 |---|---|---|
-| `Merge conflicts` | `mergeable == CONFLICTING` | `<project-config>/pr-management-triage-ci-check-map.md` → merge-conflicts row |
-| `Failing CI checks` (fallback) | `checks_state == FAILURE`, no failed names available | `<project-config>/pr-management-triage-ci-check-map.md` → catch-all row |
+| `Merge conflicts` | `mergeable == CONFLICTING` | `<project-config>/pr-management-triage-ci-check-map.md` → merge-conflicts row (fallback: `<upstream_contributing_docs_url>`) |
+| `Failing CI checks` (fallback) | `checks_state == FAILURE`, no failed names available | `<project-config>/pr-management-triage-ci-check-map.md` → catch-all row (fallback: `<upstream_contributing_docs_url>`) |
 | `Pre-commit / static checks` | failed check name matches `static checks`, `pre-commit`, `prek` | `<project-config>/pr-management-triage-ci-check-map.md` → corresponding row |
 | `Ruff (linting / formatting)` | `ruff` | `<project-config>/pr-management-triage-ci-check-map.md` → corresponding row |
 | `mypy (type checking)` | `mypy-*` | `<project-config>/pr-management-triage-ci-check-map.md` → corresponding row |
