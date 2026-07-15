@@ -28,6 +28,8 @@ from magpie_bitbucket import cloud, datacenter
 from magpie_bitbucket.cli import main
 from magpie_bitbucket.client import BitbucketError, SameHostRedirectHandler, load_config, make_auth_header
 from magpie_bitbucket.normalize import (
+    issue,
+    issue_list,
     pull_request,
     pull_request_commits,
     pull_request_diff,
@@ -2019,3 +2021,131 @@ def test_cli_repo_restrictions_datacenter(
     output = json.loads(capsys.readouterr().out)
     assert output["backend"] == "bitbucket-datacenter"
     assert output["permission_required"] == "REPO_ADMIN"
+
+
+@patch("urllib.request.build_opener")
+def test_cloud_list_open_issues_follows_next(mock_build_opener: MagicMock, cloud_env: None) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {
+            "values": [{"id": 1, "title": "First issue", "state": "open"}],
+            "next": "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues?page=2",
+        },
+        {"values": [{"id": 2, "title": "Second issue", "state": "open"}]},
+    )
+
+    result = cloud.list_open_issues(load_config())
+
+    first_request = opener.open.call_args_list[0].args[0]
+    second_request = opener.open.call_args_list[1].args[0]
+    assert first_request.full_url == (
+        "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues?q=state%3D%22new%22%20OR%20state%3D%22open%22%20OR%20state%3D%22on%20hold%22"
+    )
+    assert second_request.full_url.endswith("/issues?page=2")
+    assert result["values"] == [
+        {"id": 1, "title": "First issue", "state": "open"},
+        {"id": 2, "title": "Second issue", "state": "open"},
+    ]
+
+
+@patch("urllib.request.build_opener")
+def test_cloud_get_issue_url(mock_build_opener: MagicMock, cloud_env: None) -> None:
+    opener = mock_opener(mock_build_opener, {"id": 7, "title": "Fix issue"})
+
+    result = cloud.get_issue(load_config(), "7")
+
+    request = opener.open.call_args.args[0]
+    assert request.full_url == "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues/7"
+    assert result == {"id": 7, "title": "Fix issue"}
+
+
+def test_datacenter_list_open_issues_unsupported(datacenter_env: None) -> None:
+    with pytest.raises(BitbucketError, match="Data Center native issue reads are not supported"):
+        datacenter.list_open_issues(load_config())
+
+
+def test_datacenter_get_issue_unsupported(datacenter_env: None) -> None:
+    with pytest.raises(BitbucketError, match="Data Center native issue reads are not supported"):
+        datacenter.get_issue(load_config(), "7")
+
+
+def test_normalize_cloud_issue() -> None:
+    normalized = issue(
+        "cloud",
+        {
+            "id": 7,
+            "title": "Fix docs",
+            "state": "new",
+            "kind": "bug",
+            "priority": "major",
+            "reporter": {"display_name": "Reporter One"},
+            "assignee": {"display_name": "Assignee One"},
+            "created_on": "2026-07-01T12:00:00+00:00",
+            "updated_on": "2026-07-02T12:00:00+00:00",
+            "content": {"raw": "Issue body"},
+            "links": {"html": {"href": "https://bitbucket.org/apache/magpie/issues/7"}},
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-cloud"
+    assert normalized["id"] == "7"
+    assert normalized["title"] == "Fix docs"
+    assert normalized["state"] == "open"
+    assert normalized["kind"] == "bug"
+    assert normalized["priority"] == "major"
+    assert normalized["reporter"] == "Reporter One"
+    assert normalized["assignee"] == "Assignee One"
+    assert normalized["description"] == "Issue body"
+    assert normalized["permalink"] == "https://bitbucket.org/apache/magpie/issues/7"
+    assert "partial-tracker" in normalized["labels"]
+
+
+def test_normalize_cloud_issue_list() -> None:
+    normalized = issue_list(
+        "cloud",
+        {
+            "values": [
+                {"id": 1, "title": "First issue", "state": "new"},
+                {"id": 2, "title": "Second issue", "state": "resolved"},
+            ]
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-cloud"
+    assert normalized["coverage"] == "partial-read-only"
+    assert [item["state"] for item in normalized["issues"]] == ["open", "closed"]
+
+
+@patch("magpie_bitbucket.cloud.list_open_issues")
+def test_cli_issue_list_open_cloud(
+    mock_list_open_issues: MagicMock,
+    cloud_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_list_open_issues.return_value = {"values": [{"id": 1, "title": "First issue", "state": "new"}]}
+
+    exit_code = main(["issue", "list-open"])
+
+    assert exit_code == 0
+    mock_list_open_issues.assert_called_once()
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-cloud"
+    assert output["issues"][0]["title"] == "First issue"
+
+
+@patch("magpie_bitbucket.cloud.get_issue")
+def test_cli_issue_get_cloud(
+    mock_get_issue: MagicMock,
+    cloud_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_get_issue.return_value = {"id": 7, "title": "Fix docs", "state": "new"}
+
+    exit_code = main(["issue", "get", "7"])
+
+    assert exit_code == 0
+    mock_get_issue.assert_called_once_with(load_config(), "7")
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-cloud"
+    assert output["id"] == "7"
+    assert output["state"] == "open"

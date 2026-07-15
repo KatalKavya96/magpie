@@ -79,6 +79,20 @@ def get_repository_restrictions(config: BitbucketConfig) -> dict[str, Any]:
     return combined
 
 
+def list_open_issues(config: BitbucketConfig) -> dict[str, Any]:
+    """Reject native Bitbucket issue listing for Data Center."""
+    _ = config
+    msg = "Bitbucket Data Center native issue reads are not supported; use linked Jira coverage instead."
+    raise BitbucketError(msg)
+
+
+def get_issue(config: BitbucketConfig, issue_id: str) -> dict[str, Any]:
+    """Reject native Bitbucket issue fetch for Data Center."""
+    _ = (config, issue_id)
+    msg = "Bitbucket Data Center native issue reads are not supported; use linked Jira coverage instead."
+    raise BitbucketError(msg)
+
+
 def list_open_pull_requests(config: BitbucketConfig) -> dict[str, Any]:
     """List all open pull requests from Bitbucket Data Center."""
     project_key = quote_path(require(config.project_key, "BITBUCKET_PROJECT_KEY"))

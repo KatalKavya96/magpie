@@ -86,6 +86,63 @@ def repository_restrictions(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def issue_summary(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize one Bitbucket issue as read-only tracker context."""
+    if kind == "cloud":
+        return {
+            "backend": "bitbucket-cloud",
+            "id": _string(raw.get("id")),
+            "title": raw.get("title"),
+            "state": _normalize_issue_state(raw.get("state")),
+            "kind": _string(raw.get("kind")),
+            "priority": _string(raw.get("priority")),
+            "assignee": _cloud_user(raw.get("assignee")),
+            "reporter": _cloud_user(raw.get("reporter")),
+            "created": _cloud_timestamp(raw.get("created_on")),
+            "updated": _cloud_timestamp(raw.get("updated_on")),
+            "permalink": _cloud_link(raw, "html"),
+            "labels": ["bitbucket", "read-only", "partial-tracker"],
+        }
+
+    return {
+        "backend": "bitbucket-datacenter",
+        "id": _string(raw.get("id")),
+        "title": raw.get("title"),
+        "state": "unsupported",
+        "kind": None,
+        "priority": None,
+        "assignee": None,
+        "reporter": None,
+        "created": None,
+        "updated": None,
+        "permalink": None,
+        "labels": ["bitbucket", "read-only", "unsupported-tracker"],
+    }
+
+
+def issue(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize one Bitbucket issue."""
+    summary = issue_summary(kind, raw)
+    content = raw.get("content")
+    summary["description"] = _cloud_issue_content(content)
+    summary["raw"] = raw
+    return summary
+
+
+def issue_list(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a Bitbucket issue list response."""
+    values = raw.get("values")
+    if not isinstance(values, list):
+        values = []
+
+    return {
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "coverage": "partial-read-only",
+        "issues": [issue_summary(kind, item) for item in values if isinstance(item, dict)],
+        "raw": raw,
+    }
+
+
 def pull_request_summary(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     """Normalize one pull request as a read-only change-request summary."""
     if kind == "cloud":
@@ -965,6 +1022,26 @@ def _datacenter_inline(raw: object) -> dict[str, Any] | None:
         inline["to_line"] = raw["line"]
 
     return inline or None
+
+
+def _normalize_issue_state(value: object) -> str:
+    state = _string(value)
+    if not state:
+        return "unknown"
+
+    normalized = state.lower().replace(" ", "_").replace("-", "_")
+    if normalized in {"new", "open"}:
+        return "open"
+    if normalized in {"resolved", "closed", "duplicate", "invalid", "wontfix", "wont_fix"}:
+        return "closed"
+    return normalized
+
+
+def _cloud_issue_content(raw: object) -> str | None:
+    if isinstance(raw, dict):
+        value = raw.get("raw") or raw.get("html") or raw.get("markup")
+        return _string(value)
+    return _string(raw)
 
 
 def _string(value: object) -> str | None:

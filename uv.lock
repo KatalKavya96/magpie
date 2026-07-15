@@ -934,13 +934,13 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "google-auth-oauthlib", specifier = ">=1.4.0" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.2.0" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.28.1" },
 ]
 provides-extras = ["mcp"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mcp", specifier = ">=1.2.0" },
+    { name = "mcp", specifier = ">=1.28.1" },
     { name = "mypy", specifier = ">=2.1.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.15.20" },
