@@ -61,6 +61,9 @@ def _build_parser() -> argparse.ArgumentParser:
     issue_get = issue_subparsers.add_parser("get", help="Fetch one issue.")
     issue_get.add_argument("issue_id", help="Issue ID to fetch.")
 
+    issue_comments = issue_subparsers.add_parser("comments", help="Fetch issue comments.")
+    issue_comments.add_argument("issue_id", help="Issue ID to fetch comments for.")
+
     pr_parser = subparsers.add_parser("pr", help="Interact with Bitbucket pull requests.")
     pr_subparsers = pr_parser.add_subparsers(dest="pr_action", required=True)
     pr_subparsers.add_parser("list-open", help="List open pull requests.")
@@ -116,6 +119,10 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
     if args.subcommand == "issue" and args.issue_action == "get":
         raw = backend.get_issue(config, args.issue_id)
         return normalize.issue(config.kind, raw)
+
+    if args.subcommand == "issue" and args.issue_action == "comments":
+        raw = backend.get_issue_comments(config, args.issue_id)
+        return normalize.issue_comments(config.kind, raw)
 
     if args.subcommand == "pr" and args.pr_action == "list-open":
         raw = backend.list_open_pull_requests(config)

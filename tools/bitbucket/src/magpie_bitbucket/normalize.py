@@ -143,6 +143,28 @@ def issue_list(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def issue_comments(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize read-only Bitbucket issue comments."""
+    values = raw.get("values")
+    if not isinstance(values, list):
+        values = []
+
+    comments = [
+        _cloud_issue_comment(item) if kind == "cloud" else _unsupported_issue_comment(item)
+        for item in values
+        if isinstance(item, dict)
+    ]
+
+    return {
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "coverage": "partial-read-only",
+        "issue_id": _string(raw.get("issue_id")),
+        "comments": comments,
+        "participants": _participants(comments),
+        "raw": raw,
+    }
+
+
 def pull_request_summary(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     """Normalize one pull request as a read-only change-request summary."""
     if kind == "cloud":
@@ -1022,6 +1044,37 @@ def _datacenter_inline(raw: object) -> dict[str, Any] | None:
         inline["to_line"] = raw["line"]
 
     return inline or None
+
+
+def _cloud_issue_comment(raw: dict[str, Any]) -> dict[str, Any]:
+    body = _cloud_issue_content(raw.get("content"))
+    return {
+        "id": _string(raw.get("id")),
+        "author": _cloud_user(raw.get("user")),
+        "body": body,
+        "created": _cloud_timestamp(raw.get("created_on")),
+        "updated": _cloud_timestamp(raw.get("updated_on")),
+        "date": _cloud_timestamp(raw.get("created_on")),
+        "kind": "comment",
+        "deleted": raw.get("deleted"),
+        "permalink": _cloud_link(raw, "html"),
+        "raw": raw,
+    }
+
+
+def _unsupported_issue_comment(raw: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": _string(raw.get("id")),
+        "author": None,
+        "body": None,
+        "created": None,
+        "updated": None,
+        "date": None,
+        "kind": "unsupported",
+        "deleted": None,
+        "permalink": None,
+        "raw": raw,
+    }
 
 
 def _normalize_issue_state(value: object) -> str:

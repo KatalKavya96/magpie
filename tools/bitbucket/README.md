@@ -63,6 +63,7 @@ Implemented read-only commands:
 - `magpie-bitbucket repo restrictions`
 - `magpie-bitbucket issue list-open`
 - `magpie-bitbucket issue get <id>`
+- `magpie-bitbucket issue comments <id>`
 - `magpie-bitbucket pr list-open`
 - `magpie-bitbucket pr get <id>`
 - `magpie-bitbucket pr commits <id>`
@@ -106,14 +107,15 @@ This implementation covers read-only operations:
 3. **Repository branch restrictions:** fetch known read-only repository branch restriction / branch permission policy context.
 4. **Cloud issue listing:** list open Bitbucket Cloud issues where the repository issue tracker is enabled.
 5. **Cloud issue fetch:** fetch one Bitbucket Cloud issue as partial read-only tracker context.
-6. **Pull-request listing:** list open pull requests as `contract:change-request` proposal summaries.
-7. **Pull-request fetch:** fetch one pull request as a normalized proposal object.
-8. **Pull-request commits fetch:** fetch commits associated with a pull request as normalized read-only output.
-9. **Pull-request diff fetch:** fetch the pull request unified diff as normalized read-only output.
-10. **Pull-request discussion fetch:** fetch a comments-only pull request discussion subset as normalized read-only output.
-11. **Pull-request review-state fetch:** fetch reviewers, approvals, change-request signals, pending review requests, and normalized review activity.
-12. **Pull-request merge-check context fetch:** fetch known read-only mergeability, conflict, status-check, and review blocker context while preserving unknown values where the backend does not expose a clear signal.
-13. **Pull-request status fetch:** fetch build/status checks for the pull request as normalized read-only output.
+6. **Cloud issue comments fetch:** fetch comments for one Bitbucket Cloud issue as partial read-only tracker context.
+7. **Pull-request listing:** list open pull requests as `contract:change-request` proposal summaries.
+8. **Pull-request fetch:** fetch one pull request as a normalized proposal object.
+9. **Pull-request commits fetch:** fetch commits associated with a pull request as normalized read-only output.
+10. **Pull-request diff fetch:** fetch the pull request unified diff as normalized read-only output.
+11. **Pull-request discussion fetch:** fetch a comments-only pull request discussion subset as normalized read-only output.
+12. **Pull-request review-state fetch:** fetch reviewers, approvals, change-request signals, pending review requests, and normalized review activity.
+13. **Pull-request merge-check context fetch:** fetch known read-only mergeability, conflict, status-check, and review blocker context while preserving unknown values where the backend does not expose a clear signal.
+14. **Pull-request status fetch:** fetch build/status checks for the pull request as normalized read-only output.
 
 The bridge supports two Bitbucket API flavours behind one command
 surface:
@@ -137,7 +139,7 @@ surface:
 | Change requests | `post_review` | Not implemented | Follow-up work for #606. |
 | Change requests | `land` | Not implemented | Follow-up work for #606. |
 | Change requests | `reject` | Not implemented | Follow-up work for #606. |
-| Tracker | `issue list-open` / `issue get <id>` | Partial read-only, Cloud only | Lists and fetches Bitbucket Cloud issues where the repository issue tracker is enabled. Bitbucket Data Center native issue reads are unsupported; linked Jira handoff remains separate follow-up work. |
+| Tracker | `issue list-open` / `issue get <id>` / `issue comments <id>` | Partial read-only, Cloud only | Lists and fetches Bitbucket Cloud issues and issue comments where the repository issue tracker is enabled. Bitbucket Data Center native issue reads/comments are unsupported; linked Jira handoff remains separate follow-up work. |
 | CI | `pr status <id>` | Partial read-only | Fetches build/status checks for a pull request. This does not trigger, retry, or mutate Pipelines/builds. |
 
 ## Invocation
@@ -157,6 +159,9 @@ uv run --project tools/bitbucket magpie-bitbucket issue list-open
 
 # Fetch one Bitbucket Cloud issue
 uv run --project tools/bitbucket magpie-bitbucket issue get 123
+
+# Fetch Bitbucket Cloud issue comments
+uv run --project tools/bitbucket magpie-bitbucket issue comments 123
 
 # List open pull requests
 uv run --project tools/bitbucket magpie-bitbucket pr list-open
@@ -209,7 +214,7 @@ injected by the caller as `BITBUCKET_TOKEN` / `BITBUCKET_CLOUD_USER`.
 Every successful command emits JSON to stdout. Failures return a
 non-zero exit code with a human-readable error on stderr.
 
-Fetched repository branch restriction policy, branch matcher patterns, users, groups, access keys, issue titles/descriptions, issue reporter/assignee names, issue links,
+Fetched repository branch restriction policy, branch matcher patterns, users, groups, access keys, issue titles/descriptions, issue comments, issue reporter/assignee/commenter names, issue links,
 pull request descriptions, commit messages, diff hunks, file paths, comments,
 reviewer names, review decisions/events, approval/change-request activity,
 merge-check decisions/blockers, status descriptions, CI URLs, and raw Bitbucket

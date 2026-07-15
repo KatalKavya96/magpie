@@ -29,6 +29,7 @@ from magpie_bitbucket.cli import main
 from magpie_bitbucket.client import BitbucketError, SameHostRedirectHandler, load_config, make_auth_header
 from magpie_bitbucket.normalize import (
     issue,
+    issue_comments,
     issue_list,
     pull_request,
     pull_request_commits,
@@ -2149,3 +2150,86 @@ def test_cli_issue_get_cloud(
     assert output["backend"] == "bitbucket-cloud"
     assert output["id"] == "7"
     assert output["state"] == "open"
+
+
+@patch("urllib.request.build_opener")
+def test_cloud_get_issue_comments_follows_next(mock_build_opener: MagicMock, cloud_env: None) -> None:
+    opener = mock_opener(
+        mock_build_opener,
+        {
+            "values": [{"id": 101, "content": {"raw": "First comment"}}],
+            "next": "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues/7/comments?page=2",
+        },
+        {"values": [{"id": 102, "content": {"raw": "Second comment"}}]},
+    )
+
+    result = cloud.get_issue_comments(load_config(), "7")
+
+    first_request = opener.open.call_args_list[0].args[0]
+    second_request = opener.open.call_args_list[1].args[0]
+    assert first_request.full_url == (
+        "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues/7/comments"
+    )
+    assert second_request.full_url.endswith("/issues/7/comments?page=2")
+    assert result["issue_id"] == "7"
+    assert result["values"] == [
+        {"id": 101, "content": {"raw": "First comment"}},
+        {"id": 102, "content": {"raw": "Second comment"}},
+    ]
+
+
+def test_datacenter_get_issue_comments_unsupported(datacenter_env: None) -> None:
+    with pytest.raises(BitbucketError, match="Data Center native issue comments are not supported"):
+        datacenter.get_issue_comments(load_config(), "7")
+
+
+def test_normalize_cloud_issue_comments() -> None:
+    normalized = issue_comments(
+        "cloud",
+        {
+            "issue_id": "7",
+            "values": [
+                {
+                    "id": 101,
+                    "user": {"display_name": "Alice"},
+                    "content": {"raw": "Looks good."},
+                    "created_on": "2026-07-01T00:00:00Z",
+                    "updated_on": "2026-07-01T01:00:00Z",
+                    "deleted": False,
+                    "links": {"html": {"href": "https://bitbucket.org/apache/magpie/issues/7#comment-101"}},
+                }
+            ],
+        },
+    )
+
+    assert normalized["backend"] == "bitbucket-cloud"
+    assert normalized["coverage"] == "partial-read-only"
+    assert normalized["issue_id"] == "7"
+    assert normalized["participants"] == ["Alice"]
+    assert normalized["comments"][0]["id"] == "101"
+    assert normalized["comments"][0]["author"] == "Alice"
+    assert normalized["comments"][0]["body"] == "Looks good."
+    assert normalized["comments"][0]["date"] == "2026-07-01T00:00:00Z"
+    assert normalized["comments"][0]["kind"] == "comment"
+    assert normalized["comments"][0]["deleted"] is False
+
+
+@patch("magpie_bitbucket.cloud.get_issue_comments")
+def test_cli_issue_comments_cloud(
+    mock_get_issue_comments: MagicMock,
+    cloud_env: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mock_get_issue_comments.return_value = {
+        "issue_id": "7",
+        "values": [{"id": 101, "user": {"display_name": "Alice"}, "content": {"raw": "Looks good."}}],
+    }
+
+    exit_code = main(["issue", "comments", "7"])
+
+    assert exit_code == 0
+    mock_get_issue_comments.assert_called_once()
+    output = json.loads(capsys.readouterr().out)
+    assert output["backend"] == "bitbucket-cloud"
+    assert output["issue_id"] == "7"
+    assert output["comments"][0]["body"] == "Looks good."
