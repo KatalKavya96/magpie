@@ -1056,7 +1056,7 @@ def _cloud_issue_comment(raw: dict[str, Any]) -> dict[str, Any]:
         "updated": _cloud_timestamp(raw.get("updated_on")),
         "date": _cloud_timestamp(raw.get("created_on")),
         "kind": "comment",
-        "deleted": raw.get("deleted"),
+        "deleted": _bool_or_none(raw.get("deleted")),
         "permalink": _cloud_link(raw, "html"),
         "raw": raw,
     }
