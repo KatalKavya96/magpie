@@ -64,8 +64,14 @@ def _build_parser() -> argparse.ArgumentParser:
     issue_comments = issue_subparsers.add_parser("comments", help="Fetch issue comments.")
     issue_comments.add_argument("issue_id", help="Issue ID to fetch comments for.")
 
-    issue_attachments = issue_subparsers.add_parser("attachments", help="Fetch issue attachments.")
-    issue_attachments.add_argument("issue_id", help="Issue ID to fetch attachments for.")
+    issue_attachments = issue_subparsers.add_parser(
+        "attachments",
+        help="Fetch issue attachment metadata and links, not file contents.",
+    )
+    issue_attachments.add_argument(
+        "issue_id",
+        help="Issue ID whose attachment metadata to fetch.",
+    )
 
     pr_parser = subparsers.add_parser("pr", help="Interact with Bitbucket pull requests.")
     pr_subparsers = pr_parser.add_subparsers(dest="pr_action", required=True)

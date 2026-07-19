@@ -36,7 +36,7 @@ that use Bitbucket as a forge, pull-request review surface, or Jira-paired Atlas
 
 This initial bridge implements a `partial-read-only` profile for
 repository metadata context and pull-request discovery/fetching under
-`contract:change-request`, with partial Cloud-only issue reads under
+`contract:change-request`, with partial Cloud-only issue reads, comment reads, and attachment metadata reads under
 `contract:tracker`. Partial adapters may implement named
 contract verbs, but they do not satisfy the complete contract and must
 not be advertised as complete/selectable backends.
@@ -109,7 +109,7 @@ This implementation covers read-only operations:
 4. **Cloud issue listing:** list open Bitbucket Cloud issues where the repository issue tracker is enabled.
 5. **Cloud issue fetch:** fetch one Bitbucket Cloud issue as partial read-only tracker context.
 6. **Cloud issue comments fetch:** fetch comments for one Bitbucket Cloud issue as partial read-only tracker context.
-7. **Cloud issue attachments fetch:** fetch attachments for one Bitbucket Cloud issue as partial read-only tracker context.
+7. **Cloud issue attachments fetch:** fetch attachment metadata and links for one Bitbucket Cloud issue as partial read-only tracker context; file contents are not downloaded.
 8. **Pull-request listing:** list open pull requests as `contract:change-request` proposal summaries.
 9. **Pull-request fetch:** fetch one pull request as a normalized proposal object.
 10. **Pull-request commits fetch:** fetch commits associated with a pull request as normalized read-only output.
@@ -141,7 +141,7 @@ surface:
 | Change requests | `post_review` | Not implemented | Follow-up work for #606. |
 | Change requests | `land` | Not implemented | Follow-up work for #606. |
 | Change requests | `reject` | Not implemented | Follow-up work for #606. |
-| Tracker | `issue list-open` / `issue get <id>` / `issue comments <id>` / `issue attachments <id>` | Partial read-only, Cloud only | Lists and fetches Bitbucket Cloud issues, issue comments, and issue attachments where the repository issue tracker is enabled. Bitbucket Data Center native issue reads/comments/attachments are unsupported; linked Jira handoff remains separate follow-up work. |
+| Tracker | `issue list-open` / `issue get <id>` / `issue comments <id>` / `issue attachments <id>` | Partial read-only, Cloud only | Lists and fetches Bitbucket Cloud issues, issue comments, and issue attachment metadata/links where the repository issue tracker is enabled. Bitbucket Data Center native issue reads/comments/attachments are unsupported; linked Jira handoff remains separate follow-up work. |
 | CI | `pr status <id>` | Partial read-only | Fetches build/status checks for a pull request. This does not trigger, retry, or mutate Pipelines/builds. |
 
 ## Invocation
@@ -165,7 +165,7 @@ uv run --project tools/bitbucket magpie-bitbucket issue get 123
 # Fetch Bitbucket Cloud issue comments
 uv run --project tools/bitbucket magpie-bitbucket issue comments 123
 
-# Fetch Bitbucket Cloud issue attachments
+# Fetch Bitbucket Cloud issue attachment metadata and links
 uv run --project tools/bitbucket magpie-bitbucket issue attachments 123
 
 # List open pull requests
@@ -219,7 +219,7 @@ injected by the caller as `BITBUCKET_TOKEN` / `BITBUCKET_CLOUD_USER`.
 Every successful command emits JSON to stdout. Failures return a
 non-zero exit code with a human-readable error on stderr.
 
-Fetched repository branch restriction policy, branch matcher patterns, users, groups, access keys, issue titles/descriptions, issue comments, issue attachments, issue reporter/assignee/commenter names, issue links,
+Fetched repository branch restriction policy, branch matcher patterns, users, groups, access keys, issue titles/descriptions, issue comments, attachment names, uploader names when present, attachment links, raw attachment payloads, issue reporter/assignee/commenter names, issue links,
 pull request descriptions, commit messages, diff hunks, file paths, comments,
 reviewer names, review decisions/events, approval/change-request activity,
 merge-check decisions/blockers, status descriptions, CI URLs, and raw Bitbucket

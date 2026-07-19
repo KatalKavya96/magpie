@@ -1068,11 +1068,15 @@ def _datacenter_inline(raw: object) -> dict[str, Any] | None:
 
 
 def _cloud_issue_attachment(raw: dict[str, Any]) -> dict[str, Any]:
+    name = _string(raw.get("name") or raw.get("filename"))
+    size = raw.get("size")
+    normalized_size = size if isinstance(size, int) and not isinstance(size, bool) and size >= 0 else None
+
     return {
-        "id": _string(raw.get("id") or raw.get("uuid")),
-        "name": _string(raw.get("name") or raw.get("filename")),
+        "id": _string(raw.get("id") or raw.get("uuid")) or name,
+        "name": name,
         "filename": _string(raw.get("filename") or raw.get("name")),
-        "size": raw.get("size"),
+        "size": normalized_size,
         "user": _cloud_user(raw.get("user")),
         "created": _cloud_timestamp(raw.get("created_on")),
         "updated": _cloud_timestamp(raw.get("updated_on")),

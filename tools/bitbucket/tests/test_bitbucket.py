@@ -2309,6 +2309,28 @@ def test_normalize_cloud_issue_attachments() -> None:
     assert normalized["attachments"][0]["created"] == "2026-07-01T00:00:00Z"
     assert normalized["attachments"][0]["download_url"].endswith("/attachments/201")
 
+    documented_payload = issue_attachments(
+        "cloud",
+        {
+            "issue_id": "7",
+            "values": [
+                {
+                    "name": "documented.txt",
+                    "links": {
+                        "self": {
+                            "href": "https://api.bitbucket.org/2.0/repositories/apache/magpie/issues/7/attachments/documented.txt"
+                        }
+                    },
+                }
+            ],
+        },
+    )
+    assert documented_payload["attachments"][0]["id"] == "documented.txt"
+    assert documented_payload["attachments"][0]["name"] == "documented.txt"
+    assert documented_payload["attachments"][0]["filename"] == "documented.txt"
+    assert documented_payload["attachments"][0]["size"] is None
+    assert documented_payload["attachments"][0]["download_url"].endswith("/attachments/documented.txt")
+
 
 @patch("magpie_bitbucket.cloud.get_issue_attachments")
 def test_cli_issue_attachments_cloud(
@@ -2324,7 +2346,7 @@ def test_cli_issue_attachments_cloud(
     exit_code = main(["issue", "attachments", "7"])
 
     assert exit_code == 0
-    mock_get_issue_attachments.assert_called_once()
+    mock_get_issue_attachments.assert_called_once_with(load_config(), "7")
     output = json.loads(capsys.readouterr().out)
     assert output["backend"] == "bitbucket-cloud"
     assert output["issue_id"] == "7"

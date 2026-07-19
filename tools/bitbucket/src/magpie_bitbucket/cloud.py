@@ -144,7 +144,7 @@ def get_issue_comments(config: BitbucketConfig, issue_id: str) -> dict[str, Any]
 
 
 def get_issue_attachments(config: BitbucketConfig, issue_id: str) -> dict[str, Any]:
-    """Fetch attachments for a Bitbucket Cloud issue."""
+    """Fetch attachment metadata and links for a Bitbucket Cloud issue."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
     repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
     issue = quote_path(issue_id)
