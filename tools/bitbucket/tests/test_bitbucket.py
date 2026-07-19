@@ -2213,6 +2213,12 @@ def test_normalize_cloud_issue_comments() -> None:
     assert normalized["comments"][0]["kind"] == "comment"
     assert normalized["comments"][0]["deleted"] is False
 
+    deleted_normalized = issue_comments(
+        "cloud",
+        {"issue_id": "7", "values": [{"id": 102, "deleted": True}]},
+    )
+    assert deleted_normalized["comments"][0]["deleted"] is True
+
 
 @patch("magpie_bitbucket.cloud.get_issue_comments")
 def test_cli_issue_comments_cloud(
