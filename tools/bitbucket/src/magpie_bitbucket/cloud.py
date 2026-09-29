@@ -399,6 +399,31 @@ def decline_pull_request(
     }
 
 
+def merge_pull_request(
+    config: BitbucketConfig,
+    pull_request_id: str,
+) -> dict[str, Any]:
+    """Submit a merge for one Bitbucket Cloud pull request."""
+    workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
+    repo_slug = quote_path(require(config.repo_slug, "BITBUCKET_REPO_SLUG"))
+    pr_id = quote_path(pull_request_id)
+    url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/pullrequests/{pr_id}/merge"
+
+    result = write_request(
+        url,
+        config,
+        method="POST",
+        payload={"type": "pullrequest"},
+    )
+    if result is None:
+        raise BitbucketError("Bitbucket merge response did not contain result data")
+
+    return {
+        "pull_request_id": pull_request_id,
+        "result": result,
+    }
+
+
 def get_pull_request_reviews(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
     """Fetch review-state activity for a Bitbucket Cloud pull request."""
     pull_request = get_pull_request(config, pull_request_id)

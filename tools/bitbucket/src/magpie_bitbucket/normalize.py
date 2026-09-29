@@ -504,6 +504,35 @@ def declined_pull_request(
     }
 
 
+def merged_pull_request(
+    kind: str,
+    raw: dict[str, Any],
+) -> dict[str, Any]:
+    """Normalize a pull-request merge submission."""
+    result = raw.get("result")
+    result_data = result if isinstance(result, dict) else {}
+
+    task_status = _string(result_data.get("task_status"))
+    state = _string(result_data.get("state"))
+
+    if task_status:
+        merge_status = task_status.lower()
+    elif state and state.upper() == "MERGED":
+        merge_status = "merged"
+    else:
+        merge_status = "submitted"
+
+    return {
+        "ok": True,
+        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "operation": "pull-request-merge",
+        "pull_request_id": _string(raw.get("pull_request_id")),
+        "merge_status": merge_status,
+        "result": result_data,
+        "raw": raw,
+    }
+
+
 def pull_request_reviews(kind: str, raw: dict[str, Any]) -> dict[str, Any]:
     """Normalize pull request review-state activity from Bitbucket."""
     pull_request_raw = raw.get("pull_request")
