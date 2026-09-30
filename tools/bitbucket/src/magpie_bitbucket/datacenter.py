@@ -367,9 +367,10 @@ def decline_pull_request(
 def merge_pull_request(
     config: BitbucketConfig,
     pull_request_id: str,
+    strategy: str,
 ) -> dict[str, Any]:
     """Reject pull-request merge writes for Data Center for now."""
-    _ = (config, pull_request_id)
+    _ = (config, pull_request_id, strategy)
     raise BitbucketError(
         "Bitbucket Data Center pull request merge writes are not supported by this command yet"
     )

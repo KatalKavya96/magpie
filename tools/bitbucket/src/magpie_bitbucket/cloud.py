@@ -402,6 +402,7 @@ def decline_pull_request(
 def merge_pull_request(
     config: BitbucketConfig,
     pull_request_id: str,
+    strategy: str,
 ) -> dict[str, Any]:
     """Submit a merge for one Bitbucket Cloud pull request."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
@@ -409,17 +410,32 @@ def merge_pull_request(
     pr_id = quote_path(pull_request_id)
     url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/pullrequests/{pr_id}/merge"
 
+    strategy_map = {
+        "merge": "merge_commit",
+        "squash": "squash",
+        "rebase": "fast_forward",
+    }
+
+    try:
+        merge_strategy = strategy_map[strategy]
+    except KeyError as exc:
+        raise BitbucketError(f"Unsupported pull request merge strategy: {strategy}") from exc
+
     result = write_request(
         url,
         config,
         method="POST",
-        payload={"type": "pullrequest"},
+        payload={
+            "type": "pullrequest",
+            "merge_strategy": merge_strategy,
+        },
     )
     if result is None:
         raise BitbucketError("Bitbucket merge response did not contain result data")
 
     return {
         "pull_request_id": pull_request_id,
+        "strategy": strategy,
         "result": result,
     }
 

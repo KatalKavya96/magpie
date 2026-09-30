@@ -190,6 +190,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "pull_request_id",
         help="Pull request ID to merge.",
     )
+    pr_merge.add_argument(
+        "--strategy",
+        required=True,
+        choices=("merge", "squash", "rebase"),
+        help="Merge strategy required by the change-request land contract.",
+    )
 
     pr_tasks = pr_subparsers.add_parser("tasks", help="List pull request tasks.")
     pr_tasks.add_argument("pull_request_id", help="Pull request ID whose tasks to fetch.")
@@ -333,6 +339,7 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
         raw = backend.merge_pull_request(
             config,
             args.pull_request_id,
+            args.strategy,
         )
         return normalize.merged_pull_request(
             config.kind,
