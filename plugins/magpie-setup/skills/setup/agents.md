@@ -22,11 +22,16 @@ go"*, never as *"what files contain"*.
 
 | Target id | Project skills dir | Kind | Reads it |
 |---|---|---|---|
-| `universal` | `.agents/skills/` | universal **(canonical)** | Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, Grok, OpenCode, Cline, Zed, Warp, Amp, and the rest of the cluster that converged on the shared path |
+| `universal` | `.agents/skills/` | universal **(canonical)** | Codex, Cursor, Gemini CLI, GitHub Copilot, Goose, OpenCode, Cline, Zed, Warp, Amp, and the rest of the cluster that converged on the shared path |
 | `claude-code` | `.claude/skills/` | native (relay) | Claude Code |
 | `github` | `.github/skills/` | native (relay) | GitHub's skill loader |
 | `windsurf` | `.windsurf/skills/` | native (relay) | Windsurf |
 | `kiro` | `.kiro/skills/` | native (relay) | Kiro CLI |
+| `grok` | `.grok/skills/` | native (relay) | Grok (xAI) |
+
+Grok reads project skills from `.grok/skills/` only; it reads `.agents/skills/` at user scope (`~/.agents/skills/`), not in the project.
+It also reads Claude Code skills and instruction files, so an adopted repo's `.claude/skills/` relays reach it even without the `grok` row.
+Source: [Grok skills, plugins and marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces).
 
 The table is **extensible**: a new agent that wants framework
 skills is one new row (`id`, project dir, kind), nothing else —
@@ -46,7 +51,7 @@ in-repo `../../skills/<skill>/` source for the framework's own
 This is the load-bearing move for neutrality on two fronts:
 
 1. **One placement covers the whole shared-path cluster.** A large
-   set of agents (Codex, Cursor, Gemini CLI, GitHub Copilot, Grok,
+   set of agents (Codex, Cursor, Gemini CLI, GitHub Copilot,
    OpenCode, Cline, Zed, Warp, …) all read `.agents/skills/` as
    their project-scope skills path, so a single
    `.agents/skills/magpie-<skill>` link is seen by all of them:
