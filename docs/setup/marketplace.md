@@ -157,13 +157,13 @@ can say so, because it is the floor everything else is managed from.
 |---|---|---|
 | `magpie-security` | 15 | ~1.1k |
 | `magpie-setup` | 10 | ~0.7k |
-| `magpie-release-management` | 10 | ~1.3k |
+| `magpie-release-management` | 10 | ~1.4k |
 | `magpie-pr-management` | 8 | ~0.8k |
 | `magpie-issue` | 8 | ~0.7k |
-| `magpie-repo-health` | 7 | ~0.7k |
+| `magpie-repo-health` | 7 | ~0.6k |
 | `magpie-utilities` | 5 | ~0.5k |
-| `magpie-contributor-growth` | 9 | ~0.8k |
-| `magpie-mentoring` | 4 | ~0.5k |
+| `magpie-contributor-growth` | 9 | ~0.7k |
+| `magpie-mentoring` | 4 | ~0.4k |
 | `magpie-pairing` | 2 | ~0.2k |
 
 > [!NOTE]

@@ -120,6 +120,12 @@ contract:tracker:
               - 'tools/jira/**'
               - 'tools/sourcehut/**'
 
+contract:typed-decision:
+  - any:
+      - changed-files:
+          - any-glob-to-any-file:
+              - 'tools/typed-decision/**'
+
 substrate:action-guard:
   - any:
       - changed-files:
@@ -174,6 +180,7 @@ substrate:release:
   - any:
       - changed-files:
           - any-glob-to-any-file:
+              - 'tools/maven-artifact-verify/**'
               - 'tools/reproducible-archive/**'
 
 substrate:review:

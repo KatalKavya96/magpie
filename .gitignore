@@ -29,6 +29,8 @@ logs
 !/.claude/skills/magpie-*
 .kiro/skills/*
 !/.kiro/skills/magpie-*
+.grok/skills/*
+!/.grok/skills/magpie-*
 .github/skills/*
 !/.github/skills/magpie-*
 
@@ -37,6 +39,10 @@ logs
 # repo root; never committed (see skills/pr-management-stats/export.md and
 # skills/pr-management-triage/session-history.md).
 /.apache-magpie.session-state.json
+
+# Personal, gitignored per-user layer (written by /magpie-setup config),
+# including runtime state such as the container-gateway log under run/.
+/.apache-magpie-local/
 
 # macOS
 .DS_Store

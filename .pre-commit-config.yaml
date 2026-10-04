@@ -148,7 +148,7 @@ repos:
   # (broken anchors via MD051, dangling link references via MD053);
   # style choices the existing docs already settled stay off.
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.23.2
+    rev: v0.23.3
     hooks:
       - id: markdownlint-cli2
         name: markdownlint
@@ -290,7 +290,7 @@ repos:
         name: symlink-lint
         language: system
         entry: python3 tools/symlink-lint/src/symlink_lint/__init__.py
-        files: ^(\.(agents|claude|github|kiro)/skills/.*|skills/.*|plugins/magpie-[^/]+/skills/.*)$
+        files: ^(\.(agents|claude|github|kiro|grok)/skills/.*|skills/.*|plugins/magpie-[^/]+/skills/.*)$
         types_or: [symlink, file]
         pass_filenames: false
   # Release-archive guard: build the source archive exactly as the release
@@ -307,7 +307,7 @@ repos:
         name: symlink-lint (release archive)
         language: system
         entry: python3 tools/symlink-lint/src/symlink_lint/__init__.py --archive
-        files: ^(\.gitattributes|\.(agents|claude|github|kiro)/skills/.*|skills/.*|plugins/magpie-[^/]+/skills/.*|plugins/magpie-setup/templates/.*)$
+        files: ^(\.gitattributes|\.(agents|claude|github|kiro|grok)/skills/.*|skills/.*|plugins/magpie-[^/]+/skills/.*|plugins/magpie-setup/templates/.*)$
         types_or: [symlink, file]
         pass_filenames: false
   # Marketplace-plugin consistency guard. Validates that every plugin is
