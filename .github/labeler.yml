@@ -181,6 +181,8 @@ substrate:release:
       - changed-files:
           - any-glob-to-any-file:
               - 'tools/maven-artifact-verify/**'
+              - 'tools/release-config/**'
+              - 'tools/release-verify/**'
               - 'tools/reproducible-archive/**'
 
 substrate:review:

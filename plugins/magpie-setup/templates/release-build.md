@@ -119,6 +119,8 @@ One entry per artefact:
 convenience_artefacts:
   - name: apache-<project>-<version>-bin.tar.gz     # filename as staged; <version> is rendered
     kind: binary-tarball          # binary-tarball | wheel | sdist | jar | container-image | helm-chart | npm-package | other
+    version: null                 # optional: this artefact's own version (default: the release version; `<version>` is rendered), e.g. `<version>.post1`
+    version_scheme: null          # optional: how this artefact's ecosystem versions it, e.g. `python`; see "Versioning" below
     build_command: |              # run at the release tag, SOURCE_DATE_EPOCH exported; must be deterministic
       mvn -Papache-release -Dproject.build.outputTimestamp="${SOURCE_DATE_EPOCH}" -DskipTests clean package
     staging: dist-dev             # dist-dev (alongside the source, default) | atr | registry-staging
@@ -140,6 +142,21 @@ How each skill uses the list:
 | `release-vote-draft` | Lists the artefacts, where each is staged, which are `vote_included`, and how to rebuild-and-compare them |
 | `release-promote` | After the source promotion and the final tag, emits each `publish_command` — only for artefacts whose verify-rc rebuild reproduced |
 | `release-announce-draft` | Names the channels the artefacts were published to |
+
+**Versioning.** The source release has one version format in every
+`release-*` skill: a dotted version of two or more numeric parts with
+no `.postN` (`2.11.0`), and an RC suffix `rcN` with N ≥ 1, tagged
+`<version>-rcN`. A convenience artefact may carry its own version
+(`version`, default the release version) — e.g. a Python wheel
+re-released as `2.10.5.post1` against source release `2.10.5` — and
+that version follows its ecosystem's rules, which `version_scheme`
+names:
+
+| `version_scheme` | Validated by the skills' `release-config` pre-flight |
+|---|---|
+| `python` | the artefact's `version` is a dotted version with an optional `.postN` (`2.11.0`, `2.11.0.post1`), RC `rcN` with N ≥ 1; anything else blocks |
+| any other name (`maven`, `npm`, …) | accepted but not validated: the pre-flight reports it as unvalidated and the Release Manager confirms the version |
+| absent | not validated; the pre-flight warns and suggests setting the field |
 
 Keep `expected_artefacts` (below) in sync: it is the flat list of
 filenames the RC stages (source + every convenience artefact whose
@@ -165,7 +182,12 @@ Example shape:
 
 TODO: list the artefacts the build invocation produces and the
 release ships. Each entry: filename pattern, content type, whether
-it is the canonical source artefact or a convenience binary.
+it is the canonical source artefact or a convenience binary, and
+`required` or `optional` in its parenthesised attributes.
+`release-verify-rc` Step 1 fails the RC when a `required` artefact
+is not staged and only warns when an `optional` one is not; an entry
+with no marking is `required`. Every staged artefact, of either kind,
+must be signed and checksummed.
 
 Example shape:
 
@@ -181,9 +203,12 @@ signature regime.
 ## Digest set
 
 TODO: list which digests the project publishes alongside each
-artefact. ASF baseline is `sha512`; many projects also publish
-`sha256` for older downstream tools. `md5` is no longer accepted
-per ASF infrastructure guidance.
+artefact. ASF baseline is `sha512`, the only digest
+`release-verify-rc` Step 3 requires; many projects also publish
+`sha256` for older downstream tools, which Step 3 checks whenever it
+is staged (a mismatch fails the RC). `md5` is no longer accepted per
+ASF infrastructure guidance: a staged `.md5` is a warning, never a
+failure on its own.
 
 Example shape:
 

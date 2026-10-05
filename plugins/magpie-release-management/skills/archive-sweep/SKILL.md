@@ -26,7 +26,7 @@ capability:
   - capability:triage
 surface_hash: sha256:1665af8aae9c2b58
 license: Apache-2.0
-measured_tokens: 4447
+measured_tokens: 4481
 ---
 
 <!-- SPDX-License-Identifier: Apache-2.0
@@ -160,7 +160,10 @@ override file. Framework changes go via PR to
 
 - **`<project-config>/release-management-config.md` readable** —
   `archive_retention_rule`, `release_dist_backend`, `release_dist_url_template`,
-  and the archive destination key for the chosen backend.
+  and the archive destination: `archive_url_template`, which defaults to
+  `https://archive.apache.org/dist/<project>/` (from `project_dist_name`)
+  for both ASF backends, `svnpubsub` and `atr`, and is required for any
+  other backend.
 - **`<project-config>/release-trains.md` readable** — the set of supported
   release lines and their current latest versions. Used to identify orphans.
 - **Distribution listing accessible** — the skill must be able to read the
@@ -180,19 +183,25 @@ override file. Framework changes go via PR to
 
 ## Step 0 — Pre-flight check
 
-1. **Config readable.** `<project-config>/release-management-config.md`
-   is accessible and contains `archive_retention_rule`,
-   `release_dist_backend`, and `release_dist_url_template`.
-2. **Release trains readable.** `<project-config>/release-trains.md` is
-   accessible and lists at least one supported release line.
-3. **Backend known.** `release_dist_backend` is one of `svnpubsub`, `atr`,
-   `github-releases`, `s3`, `self-hosted`.
-4. **Archive destination known.** The archive URL or bucket path for the
-   chosen backend is derivable from the config (for `svnpubsub`, the
-   default is `https://archive.apache.org/dist/<project>/`; other
-   backends resolve from their backend-specific archive key).
-5. **Drift check** — the generated pre-flight block reports snapshot drift.
-6. **Override consultation** — see *Adopter overrides* above.
+Run the checks with the
+[`release-config`](../../../../tools/release-config/README.md) tool:
+
+```bash
+uv run --project <framework>/tools/release-config release-config preflight --skill archive-sweep
+```
+
+It covers the required config keys, `release-trains.md` (at least one
+release line), the backend and the archive destination (the
+`archive.apache.org` default for `svnpubsub` and `atr`), and prints
+`{"ok", "blockers", "warnings", "values"}`.
+Each `blockers` entry is a hard blocker; surface it as written.
+Surface `warnings` and carry on.
+Copy `non_asf` and `dist_backend` from `values`.
+
+Then:
+
+1. **Drift check** — the generated pre-flight block reports snapshot drift.
+2. **Override consultation** — see *Adopter overrides* above.
 
 If any check fails, stop and surface what is missing.
 
@@ -208,11 +217,7 @@ Return ONLY valid JSON with this structure:
 ```
 
 `verdict` is `"proceed"` only when all hard blockers resolve.
-`non_asf` is `true` when the distribution surface is not an ASF one — that is,
-when `release_dist_backend` is neither `svnpubsub` nor `atr`. Both are ASF
-platforms publishing to `dist.apache.org`; the flag marks adopters whose
-releases live somewhere else entirely, so keying it on "not `svnpubsub`"
-would mislabel every ASF project using ATR.
+`non_asf` is `true` unless `project.md` declares `organization: ASF`.
 
 ---
 
@@ -233,31 +238,36 @@ would mislabel every ASF project using ATR.
    - `self-hosted`: the adopter-supplied listing command from
      `<project-config>/release-management-config.md`.
 
-2. **Map releases to trains.** Cross-reference the listing against
-   `<project-config>/release-trains.md`. Tag each release as either
-   belonging to a known train or as an orphan.
+   Save the entries, one per line, to `<listing.txt>`.
 
-3. **Apply the retention rule.** The `archive_retention_rule` field in
-   `<project-config>/release-management-config.md` controls what stays.
-   The ASF default rule is: **only the latest version of each supported
-   release train** remains on `dist/release/` (for `release_dist_backend = svnpubsub`); all earlier versions of
-   each train are past-retention. Project configs may add more specific
-   rules (e.g. keep the latest two of a given train) but may never drop
-   the latest-of-each-train floor.
+2. **Apply the retention rule.** Write the supported trains from
+   `<project-config>/release-trains.md` as JSON —
+   `{"label": "2.x", "pattern": "2.x"}` each, plus `"keep": N` where
+   `archive_retention_rule` keeps more than the latest — and run:
 
-4. **Safety check.** If the retention rule would mark the most-recent
-   version of any supported train as past-retention, abort the sweep and
-   surface a `retention-rule-error` hand-off. Do not emit any archival
-   commands.
+   ```bash
+   python3 <skill-dir>/scripts/retention.py --listing <listing.txt> --trains <trains.json>
+   ```
 
-5. **List orphans.** Collect all releases not mapped to any train. Emit
-   them in the hand-off block; propose no archival command for them.
+   Per train it keeps the newest `keep` (default 1) and marks earlier
+   versions past retention; releases on no train are `orphans`, never
+   archived. A pre-release in the release area is listed in `prereleases`,
+   never counted as a train's latest and never archived; it is a hand-off
+   to the RM. `keep` below 1 would archive a train's latest release: the
+   script sets `retention_rule_error` and empties `past_retention`, and
+   no archival command may be emitted.
+
+3. **Place what it could not.** A version in `unmapped` matched a loose
+   pattern or several trains: decide its train, list it in that train's
+   `"versions"`, and re-run until `mapping_complete` is true. A rule
+   `keep` cannot express goes to the RM; nothing may drop the
+   latest-of-each-train floor.
 
 Surface the classification table to the RM before proceeding to Step 2.
-
-List `releases_found`, `past_retention`, and `orphans` in ascending
-version order (oldest first) so the output is deterministic and matches
-the archival command order emitted in Step 2.
+Copy the lists, `latest_of_each_line`, `handoff_required`, and
+`handoff_reasons` from the script (already in ascending version order,
+matching Step 2's command order); write `retention_rule_summary`
+yourself.
 
 Return ONLY valid JSON with this structure:
 

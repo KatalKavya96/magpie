@@ -31,7 +31,7 @@ argument-hint: "<version> rc<N>"
 capability: capability:resolve
 surface_hash: sha256:60623e456e72bbf6
 license: Apache-2.0
-measured_tokens: 11801
+measured_tokens: 9878
 ---
 
 <!-- SPDX-License-Identifier: Apache-2.0
@@ -229,8 +229,10 @@ override file. Framework changes go via PR to
 - **`<project-config>/release-management-config.md` readable** —
   `release_dist_backend`, `release_dist_url_template`,
   optional `release_publish_command_template`; `§ Signing ›
-  automated_release_signing` (🪶 ASF-specific; read only when
-  `project.md` declares `organization: ASF`).
+  automated_release_signing` (🪶 ASF-specific; read only when the
+  project's organization offers automated signing — the organization
+  manifest key `release_process.automated_signing`, resolved
+  `project.md` → organization manifest → framework default).
 - **`.gitattributes` reviewed** — when `source_archive_method` is
   `git-archive`, `export_ignore_reviewed` is set (the first-release
   review in `release-prepare prep` Step 2f has landed and is in the
@@ -242,8 +244,8 @@ override file. Framework changes go via PR to
 
 | Selector | Resolves to |
 |---|---|
-| `<version>` (positional, required) | Release version string (e.g. `2.11.0`) |
-| `rc<N>` (positional, required) | RC suffix (e.g. `rc1`) |
+| `<version>` (positional, required) | Release version string: a dotted version of two or more numeric parts, no `.postN` (e.g. `2.11.0`) |
+| `rc<N>` (positional, required) | RC suffix `rcN` with N ≥ 1 (e.g. `rc1`; `rc0` is rejected) |
 | `--planning-issue <url>` | Explicit planning issue URL (auto-detected if omitted) |
 | `--release-branch <branch>` | Override release branch (default from `release_branch_base` in config) |
 | `--remote <name>` | Override the git remote name pointing at the upstream repo (default from `git_upstream_remote` in config, else `origin`) |
@@ -254,43 +256,41 @@ override file. Framework changes go via PR to
 
 ## Step 0 — Pre-flight check
 
-1. **Arguments parseable.** `<version>` matches `X.Y.Z` (or `X.Y.Z.postN`).
-   `rc<N>` matches `rc[0-9]+`.
-2. **Planning issue found.** Either `--planning-issue <url>` was passed
+Run the deterministic checks with the
+[`release-config`](../../../../tools/release-config/README.md) tool,
+passing the arguments as the RM typed them:
+
+```bash
+uv run --project <framework>/tools/release-config release-config preflight \
+  --skill rc-cut <version> <rcN> [--allow-unreviewed-archive]
+```
+
+It covers the argument formats (the source version and RC rule in
+*Inputs*), the required `release-build.md` and
+`release-management-config.md` keys, the digest set, the source-archive
+review gate, the signing-mode consistency and each convenience
+artefact's own `version` (default the release version, e.g. a wheel's
+`2.10.5.post1` against source `2.10.5`) against its `version_scheme`
+(an unknown or absent scheme is a warning: the RM confirms that
+version), and prints
+`{"ok", "blockers", "warnings", "values"}`.
+Each `blockers` entry is a hard blocker; surface it as written.
+Surface `warnings` and carry on; an accepted
+`--allow-unreviewed-archive` is carried into Step 4.
+
+Then check what the tool cannot see:
+
+1. **Planning issue found.** Either `--planning-issue <url>` was passed
    or a planning issue on `<upstream>` matching `<version>` in its title
    can be identified.
-3. **Prep PR merged.** The planning issue indicates a prep PR is merged
+2. **Prep PR merged.** The planning issue indicates a prep PR is merged
    (label `prep-pr-open` absent, or PR in `merged` state). If the prep
    PR has not yet merged, block.
-4. **RC tag does not exist.** `gh api repos/<upstream>/git/refs/tags/<version>-<rcN>`
+3. **RC tag does not exist.** `gh api repos/<upstream>/git/refs/tags/<version>-<rcN>`
    returns 404; if it returns 200, the tag already exists — block and report
    `rc_tag_exists: true`.
-5. **`release-build.md` readable.** The file is present and contains
-   `build_command`, `expected_artefacts`, `digest_set`.
-6. **`release-management-config.md` readable.** The required keys
-   (`release_dist_backend`, `release_dist_url_template`) are present.
-7. **Digest set valid.** `digest_set` in `release-build.md` contains at
-   least `sha512` and does not contain `md5` or `sha1`.
-8. **Source-archive contents reviewed.** When `source_archive_method`
-   is `git-archive` (or unset — that is the default), `release-build.md
-   § Source archive` must set `export_ignore_reviewed`. If it is unset
-   and `--allow-unreviewed-archive` was not passed, block with
-   `archive_reviewed: false` and the remediation *"run
-   `release-prepare prep <version>` — its Step 2f walks you through
-   what ships in the source archive and lands `.gitattributes` in the
-   prep PR"*. With the override, proceed with `archive_reviewed: false`
-   and carry the override into Step 4. With `source_archive_method:
-   custom` the check does not apply (`archive_reviewed: true`).
-9. **Signing mode consistent** (🪶 ASF-specific). When
-   `automated_release_signing` is `enabled`, `project.md` must declare
-   `organization: ASF`, `reproducibility_source` must be `on`, and
-   `reproducibility_binaries` must be `byte-identical` for every
-   convenience binary in `expected_artefacts` — the policy conditions in
-   [Infra § Automated release signing](https://infra.apache.org/release-signing.html#automated-release-signing).
-   Any other combination blocks. For a non-ASF project the key is
-   ignored and never mentioned.
-10. **Drift check** — the generated pre-flight block reports snapshot drift.
-11. **Override consultation** — see *Adopter overrides* above.
+4. **Drift check** — the generated pre-flight block reports snapshot drift.
+5. **Override consultation** — see *Adopter overrides* above.
 
 If any check fails (and is not overridable), stop and surface what is
 missing with the exact key name or API path that failed.
@@ -307,36 +307,33 @@ Return ONLY valid JSON with this structure:
 }
 ```
 
-`verdict` is `"proceed"` only when all hard blockers resolve.
-`archive_reviewed` is `true` when `export_ignore_reviewed` is set or the
-check does not apply; `false` when the review is outstanding (blocked,
-or overridden with `--allow-unreviewed-archive`).
+`verdict` is `"proceed"` only when all hard blockers resolve: the
+tool's `blockers` plus any from the checks above.
+`archive_reviewed` is the tool's `values.archive_reviewed`.
 
 ---
 
 ## Step 1 — Load build configuration
 
-Read the following from `<project-config>/release-build.md` and
-`<project-config>/release-management-config.md`:
+Load the configuration with the same tool:
 
-| Field | Source | Key |
-|---|---|---|
-| `build_command` | `release-build.md` | `build_command` block |
-| `expected_artefacts` | `release-build.md` | `expected_artefacts` list |
-| `digest_set` | `release-build.md` | `digest_set` list |
-| `backend` | `release-management-config.md` | `release_dist_backend` |
-| `vote_backend` | `release-management-config.md` | `release_vote_backend` (`manual` default, or `atr`) — when `atr`, Step 3 also emits an `atr upload` block |
-| `staging_url` | `release-management-config.md` | `release_dist_url_template` rendered with `<version>-<rcN>` at `dist/dev/<project>/` (for `release_dist_backend = svnpubsub`) |
-| `signing_key_fingerprint` | user.md or `release-management-config.md` | `rm_key_fingerprint` |
-| `release_branch` | `release-management-config.md` | `release_branch_base` (or `--release-branch` override) |
-| `git_upstream_remote` | `release-management-config.md` | `git_upstream_remote` — git remote name pointing at the upstream repo (default `origin`, or `--remote` override) |
-| `source_archive_method` | `release-build.md § Source archive` | `git-archive` (default) or `custom` |
-| `source_archive_format` | `release-build.md § Source archive` | `tar.gz` or `zip` |
-| `source_archive_prefix` | `release-build.md § Source archive` | top-level directory inside the archive, rendered with `<version>` |
-| `reproducibility_source` | `release-build.md § Reproducibility checks` | `on` (default with `git-archive`) or `off` |
-| `reproducibility_binaries` | `release-build.md § Reproducibility checks` | `off` (default), `byte-identical`, `documented-divergence`; with `binary_rebuild_command` |
-| `signing_mode` | `release-management-config.md § Signing` | `rm-key` (default) or `ci-automated` when `automated_release_signing: enabled` **and** `project.md` → `organization: ASF`; non-ASF projects always resolve to `rm-key` |
-| `convenience_artefacts` | `release-build.md § Convenience artefacts` | the project's optional, project-specific artefacts besides the source — each with `build_command`, `staging` / `stage_command`, `reproducibility`, `vote_included`; empty for a source-only project |
+```bash
+uv run --project <framework>/tools/release-config release-config load \
+  --skill rc-cut <version> <rcN> [--release-branch <branch>] [--remote <name>]
+```
+
+Its `metadata` object carries every field of the JSON below, resolved
+from `release-build.md`, `release-management-config.md` and the RM's
+`user.md`: defaults applied, `<version>` rendered into the artefact
+names and archive prefix, `staging_url` rendered from
+`release_dist_url_template` for `<version>-<rcN>`, and `signing_mode`
+`ci-automated` only for `automated_release_signing: enabled` where the
+organization offers automated signing (`release_process.automated_signing`).
+`convenience_artefacts` lists the project's optional artefacts besides
+the source, each with `build_command`, `staging` / `stage_command`,
+`reproducibility` and `vote_included`; it is empty for a source-only
+project.
+When `vote_backend` is `atr`, Step 3 also emits an `atr upload` block.
 
 Surface the loaded configuration to the RM for confirmation before
 proceeding to Step 2.
@@ -508,133 +505,13 @@ continue with Step 2c instead of Step 3.
 
 ## Step 2b — Emit reproducibility self-check commands (optional)
 
-Skipped when `reproducibility_source` is `off` **and**
-`reproducibility_binaries` is `off`, or when `--skip-repro-check` was
-passed and `signing_mode` is `rm-key`. Mandatory (the flag is ignored)
-when `signing_mode` is `ci-automated`. Run **after** the build and
-**before** signing: a non-reproducible build found here costs a rebuild,
-found by a voter it costs an RC.
-
-**Source (`reproducibility_source: on`).** Lint the artefact against
-the reproducible-builds.org checklist, rebuild it into a scratch
-directory from the same tag, and compare:
-
-```text
-# 1. every archive rule holds (single SOURCE_DATE_EPOCH mtime, sorted, uid/gid 0, a=rX,u+w, no PAX atime/ctime, gzip -n / zip -X)
-uv run --project <framework>/tools/reproducible-archive repro-archive check \
-  "<source-artefact-filename>" --epoch "<SOURCE_DATE_EPOCH>"
-# 2. rebuild from the tag and require byte-identical output
-mkdir -p rebuild
-uv run --project <framework>/tools/reproducible-archive repro-archive build \
-  --ref "<version>-<rcN>" --format <source_archive_format> \
-  --prefix "<source_archive_prefix>" -o "rebuild/<source-artefact-filename>"
-uv run --project <framework>/tools/reproducible-archive repro-archive compare --require-identical \
-  "<source-artefact-filename>" "rebuild/<source-artefact-filename>"
-```
-
-With `source_archive_method: custom` the `check` still runs (it lints
-any `.tar`, `.tar.gz` or `.zip`); the rebuild step re-runs
-`build_command` into `rebuild/` and compares with
-`repro-archive compare`. `content-identical` is then a warning to
-switch the build to `repro-archive build` or `repro-archive recipe`;
-`differs` is a stop.
-
-**Convenience artefacts.** One block per entry in
-`convenience_artefacts`, using the entry's `reproducibility` mode
-(default `reproducibility_binaries`). `byte-identical` — re-run the
-entry's `build_command` into `rebuild/` under the same
-`SOURCE_DATE_EPOCH` and compare bytes:
-
-```text
-export SOURCE_DATE_EPOCH="<SOURCE_DATE_EPOCH>"
-( cd rebuild && <artefact.build_command> )
-cmp "<artefact.name>" "rebuild/<artefact.name>" \
-  && echo "identical: <artefact.name>" || echo "DIFFERS: <artefact.name>"
-```
-
-`documented-divergence` — the same rebuild, then the entry's
-`verification_command` (for example `diffoscope <artefact.name>
-rebuild/<artefact.name>`); any difference not listed under the
-entry's `known_divergences` is a stop, listed ones are reported.
-`off` — state `SKIP` explicitly for that artefact. An artefact that
-does not reproduce here is not good to sign: it is not known to be
-what the tagged source produces, and `release-promote` will withhold
-its publication until a verify-rc run reproduces it.
-
-The RM runs the block and reports the outcome. Any `differs` /
-`DIFFERS` stops the cut: the RM fixes the build (or documents the
-divergence) and rebuilds before signing anything.
-
-Return ONLY valid JSON with this structure:
-
-```json
-{
-  "source_check_enabled": true | false,
-  "binary_check_mode": "off" | "byte-identical" | "documented-divergence",
-  "mandatory": true | false,
-  "source_check_commands": ["<repro-archive check …>", "<repro-archive build … rebuild/…>", "<repro-archive compare --require-identical …>"],
-  "binary_check_commands": ["<command>"],
-  "stop_on": ["differs", "DIFFERS"],
-  "proposed": true
-}
-```
-
-`mandatory` is `true` only when `signing_mode` is `ci-automated`.
-`source_check_commands` is empty when `source_check_enabled` is
-`false`; `binary_check_commands` is empty when `binary_check_mode` is
-`off`. `stop_on` always lists the verdicts that halt the cut.
-`proposed` is always `true`.
+Read [`reproducibility-self-check.md`](reproducibility-self-check.md) for this step; it is loaded only for an RM who wants the reproducibility self-check.
 
 ---
 
 ## Step 2c — CI-signed flow (🪶 ASF-specific, `signing_mode: ci-automated`)
 
-Only for a project whose `project.md` declares `organization: ASF` and
-whose `release-management-config.md` sets `automated_release_signing:
-enabled` after the one-time setup in `release-prepare automated-signing`
-(Infra-provisioned key, Security Team approval, workflow merged). For
-every other project this step does not exist and is never mentioned.
-
-Under
-[Infra § Automated release signing](https://infra.apache.org/release-signing.html#automated-release-signing)
-CI builds, signs and **stages** the artefacts; a committer re-validates
-them bit-by-bit on trusted hardware before anything is published. The
-RM still signs the **tag** with their own key (Section 1). Instead of
-Sections 3–4 and Step 3, emit:
-
-```text
-# 1. Push the signed tag — this triggers <ci_release_workflow>
-git push <git-upstream-remote> <version>-<rcN>
-# 2. Watch the run; it builds reproducibly (repro-archive), self-compares,
-#    checksums, and uploads to ATR (OIDC trusted publishing). It publishes nothing.
-gh run list --repo <upstream> --workflow <ci_release_workflow> --branch <version>-<rcN>
-gh run watch --repo <upstream> <run-id>
-# 3. Confirm the staged candidate and its checks in ATR
-atr check status <project> <version> --verbose
-# 4. Record the run URL and the SOURCE_DATE_EPOCH from the run log for Step 4
-```
-
-Then hand off: *"Before this RC can be promoted, a committer must run
-`release-verify-rc <version>-<rcN>` on their own hardware; its Step 9
-rebuilds every artefact and requires `identical`. `release-promote`
-refuses to promote without that attestation on the planning issue."*
-
-Return ONLY valid JSON with this structure:
-
-```json
-{
-  "signing_mode": "ci-automated",
-  "organization": "ASF",
-  "ci_release_workflow": "<path>",
-  "trigger_commands": ["git push <remote> <version>-<rcN>", "gh run list …", "gh run watch …"],
-  "local_sign_commands_omitted": true,
-  "trusted_hardware_validation_required": true,
-  "proposed": true
-}
-```
-
-`local_sign_commands_omitted` and `trusted_hardware_validation_required`
-are always `true` in this mode.
+Read [`ci-signed.md`](ci-signed.md) for this step; it is loaded only for `signing_mode: ci-automated`.
 
 ---
 
@@ -853,7 +730,8 @@ The AI-driven part ends with a hand-back artefact containing:
 - **Never cut past an unreviewed `.gitattributes` silently.** Block, or
   proceed only on `--allow-unreviewed-archive` and say so in the Step 4
   comment.
-- **Never offer automated release signing to a non-ASF project**, and
+- **Never offer automated release signing to a project whose
+  organization does not offer it** (`release_process.automated_signing`), and
   never emit the CI-signed flow unless `automated_release_signing` is
   `enabled` *and* the reproducibility conditions in Step 0 check 9 hold.
 - **Never add key material or a signing step to the CI workflow.** The
@@ -877,7 +755,7 @@ The AI-driven part ends with a hand-back artefact containing:
 | `release-build.md` missing or incomplete | Adopter has not filled out the template | Complete `<project-config>/release-build.md` before running this skill |
 | `signing_key_fingerprint` empty | `rm_key_fingerprint` not set in user.md or config | Add `rm_key_fingerprint` to user.md (preferred) or `release-management-config.md` |
 | Pre-flight blocked — `archive_reviewed: false` | `export_ignore_reviewed` unset in `release-build.md § Source archive` | Run `release-prepare prep <version>`; its Step 2f reviews what ships and lands `.gitattributes` in the prep PR. `--allow-unreviewed-archive` is the logged override |
-| Pre-flight blocked — signing mode inconsistent | `automated_release_signing: enabled` without `organization: ASF`, or without `reproducibility_source: on` / `reproducibility_binaries: byte-identical` | Set `automated_release_signing: off` (or `requested`) until the conditions hold; see `release-prepare automated-signing` |
+| Pre-flight blocked — signing mode inconsistent | `automated_release_signing: enabled` (where the organization offers automated signing) without `reproducibility_source: on` / `reproducibility_binaries: byte-identical`; where it does not, the setting is ignored and `signing_mode` stays `rm-key` | Set `automated_release_signing: off` (or `requested`) until the conditions hold; see `release-prepare automated-signing` |
 | Step 2b `compare` → `content-identical` | Source artefact built with a plain `git archive` or another tool version, not `repro-archive build` | Rebuild with `repro-archive build` (or `repro-archive recipe`); under `ci-automated` this is a stop |
 | Step 2b `compare` → `differs` | The artefact is not the tagged tree (built from a dirty checkout, wrong ref, or a non-deterministic `custom` build) | Rebuild at the tag from a clean checkout; fix the build; do not sign |
 | Step 2b binary `DIFFERS` | Build embeds timestamps, paths or a non-pinned toolchain | Honour `SOURCE_DATE_EPOCH`, pin the toolchain, `ARFLAGS=Dcvr`; or switch to `documented-divergence` and list the divergence in `release-build.md` |
