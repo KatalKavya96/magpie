@@ -19,6 +19,8 @@
 
 from __future__ import annotations
 
+import re
+import urllib.error
 from typing import Any
 from urllib.parse import urlparse
 
@@ -35,6 +37,16 @@ from magpie_bitbucket.client import (
 )
 
 CLOUD_API_BASE = "https://api.bitbucket.org/2.0"
+
+_SHA_PREFIX_RE = re.compile(r"[0-9a-f]{7,40}")
+
+
+def _is_timeout(exc: BaseException) -> bool:
+    """True when ``exc`` was raised because a request timed out."""
+    cause = exc.__cause__
+    if isinstance(cause, TimeoutError):
+        return True
+    return isinstance(cause, urllib.error.URLError) and isinstance(cause.reason, TimeoutError)
 
 
 def _validated_next_url(next_url: object, seen_urls: set[str]) -> str:
@@ -412,6 +424,14 @@ def merge_pull_request(
     pr_id = quote_path(pull_request_id)
     url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/pullrequests/{pr_id}/merge"
 
+    # Validate the pin before any request: a one- or two-character prefix
+    # would match a large share of heads, so the guard could pass by accident.
+    expected = expected_source_commit.strip().lower()
+    if not _SHA_PREFIX_RE.fullmatch(expected):
+        raise BitbucketError(
+            f"Expected source commit must be 7 to 40 hexadecimal characters, got {expected_source_commit!r}"
+        )
+
     pull_request = get_pull_request(config, pull_request_id)
     source = pull_request.get("source")
     source_data = source if isinstance(source, dict) else {}
@@ -422,12 +442,7 @@ def merge_pull_request(
     if not isinstance(source_commit, str) or not source_commit:
         raise BitbucketError("Bitbucket pull request response did not contain a source commit hash")
 
-    expected_commit = expected_source_commit.strip()
-    if not expected_commit:
-        raise BitbucketError("Expected source commit must not be empty")
-
     actual = source_commit.lower()
-    expected = expected_commit.lower()
 
     if not (actual.startswith(expected) or expected.startswith(actual)):
         raise BitbucketError(
@@ -446,15 +461,25 @@ def merge_pull_request(
     except KeyError as exc:
         raise BitbucketError(f"Unsupported pull request merge strategy: {strategy}") from exc
 
-    response = write_request_with_metadata(
-        url,
-        config,
-        method="POST",
-        payload={
-            "type": "pullrequest",
-            "merge_strategy": merge_strategy,
-        },
-    )
+    try:
+        response = write_request_with_metadata(
+            url,
+            config,
+            method="POST",
+            payload={
+                "type": "pullrequest",
+                "merge_strategy": merge_strategy,
+            },
+        )
+    except BitbucketError as exc:
+        # A synchronous merge can outlast the client timeout while Bitbucket
+        # carries on with it, so a timeout here does not mean nothing merged.
+        if _is_timeout(exc):
+            raise BitbucketError(
+                "Bitbucket did not answer the merge request in time; the merge may "
+                f"still have been submitted. Check `pr get {pull_request_id}` before retrying."
+            ) from exc
+        raise
 
     # Bitbucket may accept a slow merge asynchronously. An empty response
     # body is valid for HTTP 202; Location identifies the merge task.
@@ -462,6 +487,7 @@ def merge_pull_request(
         return {
             "pull_request_id": pull_request_id,
             "strategy": strategy,
+            "backend_strategy": merge_strategy,
             "source_commit": source_commit,
             "http_status": response.status,
             "task_url": response.location,
@@ -474,6 +500,7 @@ def merge_pull_request(
     return {
         "pull_request_id": pull_request_id,
         "strategy": strategy,
+        "backend_strategy": merge_strategy,
         "source_commit": source_commit,
         "http_status": response.status,
         "task_url": None,

@@ -526,11 +526,13 @@ def merged_pull_request(
     state = _string(result_data.get("state"))
     http_status = raw.get("http_status")
 
-    if landed_ref:
+    # merge_status keeps a fixed vocabulary (merged / submitted / failed);
+    # Bitbucket's own task state is reported separately as task_status.
+    if landed_ref or (task_status and task_status.upper() == "SUCCESS"):
         merge_status = "merged"
-    elif task_status:
-        merge_status = task_status.lower()
-    elif http_status == 202:
+    elif task_status and task_status.upper() in ("FAILED", "ERROR"):
+        merge_status = "failed"
+    elif task_status or http_status == 202:
         merge_status = "submitted"
     elif state and state.upper() == "MERGED":
         merge_status = "merged"
@@ -543,7 +545,9 @@ def merged_pull_request(
         "operation": "pull-request-merge",
         "pull_request_id": _string(raw.get("pull_request_id")),
         "strategy": _string(raw.get("strategy")),
+        "backend_strategy": _string(raw.get("backend_strategy")),
         "merge_status": merge_status,
+        "task_status": task_status,
         "landed_ref": landed_ref,
         "http_status": (http_status if isinstance(http_status, int) else None),
         "task_url": _string(raw.get("task_url")),

@@ -3501,7 +3501,7 @@ def test_cloud_merge_pull_request_posts_merge_payload(
         load_config(),
         "7",
         "merge",
-        "abc123",
+        "abc123d",
     )
 
     requests = mock_build_opener.return_value.open.call_args_list
@@ -3576,9 +3576,20 @@ def test_normalize_merged_pull_request_queued() -> None:
     assert normalized["ok"] is True
     assert normalized["operation"] == "pull-request-merge"
     assert normalized["pull_request_id"] == "7"
-    assert normalized["merge_status"] == "pending"
+    assert normalized["merge_status"] == "submitted"
+    assert normalized["task_status"] == "PENDING"
     assert normalized["landed_ref"] is None
     assert normalized["result"]["task_id"] == "merge-123"
+
+
+def test_normalize_merged_pull_request_failed_task() -> None:
+    normalized = merged_pull_request(
+        "cloud",
+        {"pull_request_id": "7", "http_status": 200, "result": {"task_status": "FAILED"}},
+    )
+
+    assert normalized["merge_status"] == "failed"
+    assert normalized["task_status"] == "FAILED"
 
 
 def test_normalize_merged_pull_request_submitted_when_state_unknown() -> None:
@@ -3620,7 +3631,7 @@ def test_cli_pr_merge_cloud(
             "--strategy",
             "squash",
             "--expected-source-commit",
-            "abc123",
+            "abc123d",
         ]
     )
 
@@ -3628,7 +3639,7 @@ def test_cli_pr_merge_cloud(
     mock_merge_pull_request.assert_called_once()
 
     args = mock_merge_pull_request.call_args.args
-    assert args[1:] == ("7", "squash", "abc123")
+    assert args[1:] == ("7", "squash", "abc123d")
 
     output = json.loads(capsys.readouterr().out)
 
@@ -3672,7 +3683,7 @@ def test_cloud_merge_pull_request_maps_strategy(
         load_config(),
         "7",
         strategy,
-        "abc123",
+        "abc123d",
     )
 
     merge_request = mock_build_opener.return_value.open.call_args_list[1].args[0]
@@ -3726,7 +3737,7 @@ def test_cloud_merge_pull_request_accepts_empty_202_with_location(
         load_config(),
         "7",
         "squash",
-        "abc123",
+        "abc123d",
     )
 
     assert opener.open.call_count == 2
@@ -3796,7 +3807,7 @@ def test_cloud_merge_pull_request_rejects_changed_source_commit_before_post(
             load_config(),
             "7",
             "merge",
-            "abc123",
+            "abc123d",
         )
 
     opener = mock_build_opener.return_value
@@ -3834,7 +3845,7 @@ def test_cloud_merge_pull_request_accepts_source_commit_prefix(
         load_config(),
         "7",
         "merge",
-        "abc123",
+        "abc123d",
     )
 
     assert result["source_commit"] == "abc123def456"
@@ -3884,7 +3895,7 @@ def test_cloud_merge_http_409_returns_nonzero_cli_exit(
             "--strategy",
             "merge",
             "--expected-source-commit",
-            "abc123",
+            "abc123d",
         ]
     )
 
@@ -3938,7 +3949,7 @@ def test_cloud_merge_empty_non_202_response_fails(
             load_config(),
             "7",
             "merge",
-            "abc123",
+            "abc123d",
         )
 
 
@@ -3954,7 +3965,7 @@ def test_cli_pr_merge_rejects_missing_strategy_before_request(
                 "merge",
                 "7",
                 "--expected-source-commit",
-                "abc123",
+                "abc123d",
             ]
         )
 
@@ -3976,7 +3987,7 @@ def test_cli_pr_merge_rejects_invalid_strategy_before_request(
                 "--strategy",
                 "octopus",
                 "--expected-source-commit",
-                "abc123",
+                "abc123d",
             ]
         )
 
@@ -3998,7 +4009,7 @@ def test_cli_pr_merge_datacenter_fails_without_request(
             "--strategy",
             "merge",
             "--expected-source-commit",
-            "abc123",
+            "abc123d",
         ]
     )
 
@@ -4007,3 +4018,83 @@ def test_cli_pr_merge_datacenter_fails_without_request(
 
     stderr = capsys.readouterr().err
     assert "Data Center pull request merge writes are not supported" in stderr
+
+
+@pytest.mark.parametrize(
+    "expected", ["a", "abc123", "abc12345z", " ", "0123456789abcdef0123456789abcdef012345678"]
+)
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_cloud_merge_pull_request_rejects_weak_source_commit_pin_before_request(
+    mock_build_opener: MagicMock,
+    cloud_env: None,
+    expected: str,
+) -> None:
+    with pytest.raises(BitbucketError, match="7 to 40 hexadecimal characters"):
+        cloud.merge_pull_request(load_config(), "7", "merge", expected)
+
+    mock_build_opener.assert_not_called()
+
+
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_cloud_merge_pull_request_requires_a_source_commit_hash(
+    mock_build_opener: MagicMock,
+    cloud_env: None,
+) -> None:
+    mock_opener(mock_build_opener, {"id": 7, "source": {"branch": {"name": "feature"}}})
+
+    with pytest.raises(BitbucketError, match="did not contain a source commit hash"):
+        cloud.merge_pull_request(load_config(), "7", "merge", "abc123d")
+
+    opener = mock_build_opener.return_value
+    assert opener.open.call_count == 1
+    assert opener.open.call_args.args[0].get_method() == "GET"
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [TimeoutError("timed out"), urllib.error.URLError(TimeoutError("timed out"))],
+)
+def test_cloud_merge_pull_request_timeout_says_outcome_unknown(cloud_env: None, cause: Exception) -> None:
+    timeout = BitbucketError("Timed out while connecting to Bitbucket after 30s")
+    timeout.__cause__ = cause
+    with (
+        patch(
+            "magpie_bitbucket.cloud.get_pull_request",
+            return_value={"source": {"commit": {"hash": "abc123def456"}}},
+        ),
+        patch("magpie_bitbucket.cloud.write_request_with_metadata", side_effect=timeout),
+        pytest.raises(BitbucketError, match="may still have been submitted") as exc,
+    ):
+        cloud.merge_pull_request(load_config(), "7", "squash", "abc123d")
+
+    assert "pr get 7" in str(exc.value)
+
+
+def test_cloud_merge_pull_request_other_errors_pass_through(cloud_env: None) -> None:
+    conflict = BitbucketError("Bitbucket request failed with HTTP 409: conflict")
+    with (
+        patch(
+            "magpie_bitbucket.cloud.get_pull_request",
+            return_value={"source": {"commit": {"hash": "abc123def456"}}},
+        ),
+        patch("magpie_bitbucket.cloud.write_request_with_metadata", side_effect=conflict),
+        pytest.raises(BitbucketError, match="HTTP 409"),
+    ):
+        cloud.merge_pull_request(load_config(), "7", "merge", "abc123d")
+
+
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_cloud_merge_pull_request_reports_backend_strategy(
+    mock_build_opener: MagicMock,
+    cloud_env: None,
+) -> None:
+    mock_opener(
+        mock_build_opener,
+        {"id": 7, "source": {"commit": {"hash": "abc123def456"}}},
+        {"state": "MERGED", "merge_commit": {"hash": "merged123"}},
+    )
+
+    result = cloud.merge_pull_request(load_config(), "7", "rebase", "abc123d")
+
+    assert (result["strategy"], result["backend_strategy"]) == ("rebase", "rebase_fast_forward")
+    assert merged_pull_request("cloud", result)["backend_strategy"] == "rebase_fast_forward"
