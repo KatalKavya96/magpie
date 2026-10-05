@@ -31,6 +31,7 @@ from magpie_bitbucket.client import (
     quote_path,
     require,
     write_request,
+    write_request_with_metadata,
 )
 
 CLOUD_API_BASE = "https://api.bitbucket.org/2.0"
@@ -403,6 +404,7 @@ def merge_pull_request(
     config: BitbucketConfig,
     pull_request_id: str,
     strategy: str,
+    expected_source_commit: str,
 ) -> dict[str, Any]:
     """Submit a merge for one Bitbucket Cloud pull request."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
@@ -410,10 +412,33 @@ def merge_pull_request(
     pr_id = quote_path(pull_request_id)
     url = f"{CLOUD_API_BASE}/repositories/{workspace}/{repo_slug}/pullrequests/{pr_id}/merge"
 
+    pull_request = get_pull_request(config, pull_request_id)
+    source = pull_request.get("source")
+    source_data = source if isinstance(source, dict) else {}
+    commit = source_data.get("commit")
+    commit_data = commit if isinstance(commit, dict) else {}
+    source_commit = commit_data.get("hash")
+
+    if not isinstance(source_commit, str) or not source_commit:
+        raise BitbucketError("Bitbucket pull request response did not contain a source commit hash")
+
+    expected_commit = expected_source_commit.strip()
+    if not expected_commit:
+        raise BitbucketError("Expected source commit must not be empty")
+
+    actual = source_commit.lower()
+    expected = expected_commit.lower()
+
+    if not (actual.startswith(expected) or expected.startswith(actual)):
+        raise BitbucketError(
+            "Bitbucket pull request source commit changed: "
+            f"expected {expected_source_commit}, found {source_commit}"
+        )
+
     strategy_map = {
         "merge": "merge_commit",
         "squash": "squash",
-        "rebase": "fast_forward",
+        "rebase": "rebase_fast_forward",
     }
 
     try:
@@ -421,7 +446,7 @@ def merge_pull_request(
     except KeyError as exc:
         raise BitbucketError(f"Unsupported pull request merge strategy: {strategy}") from exc
 
-    result = write_request(
+    response = write_request_with_metadata(
         url,
         config,
         method="POST",
@@ -430,13 +455,29 @@ def merge_pull_request(
             "merge_strategy": merge_strategy,
         },
     )
-    if result is None:
+
+    # Bitbucket may accept a slow merge asynchronously. An empty response
+    # body is valid for HTTP 202; Location identifies the merge task.
+    if response.status == 202:
+        return {
+            "pull_request_id": pull_request_id,
+            "strategy": strategy,
+            "source_commit": source_commit,
+            "http_status": response.status,
+            "task_url": response.location,
+            "result": response.body,
+        }
+
+    if response.body is None:
         raise BitbucketError("Bitbucket merge response did not contain result data")
 
     return {
         "pull_request_id": pull_request_id,
         "strategy": strategy,
-        "result": result,
+        "source_commit": source_commit,
+        "http_status": response.status,
+        "task_url": None,
+        "result": response.body,
     }
 
 

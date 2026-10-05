@@ -512,17 +512,26 @@ def merged_pull_request(
     result = raw.get("result")
     result_data = result if isinstance(result, dict) else {}
 
-    merge_commit = result_data.get("merge_commit")
+    merge_result = result_data.get("merge_result")
+    merge_result_data = merge_result if isinstance(merge_result, dict) else {}
+
+    merge_commit = merge_result_data.get("merge_commit")
+    if not isinstance(merge_commit, dict):
+        merge_commit = result_data.get("merge_commit")
+
     merge_commit_data = merge_commit if isinstance(merge_commit, dict) else {}
     landed_ref = _string(merge_commit_data.get("hash"))
 
     task_status = _string(result_data.get("task_status"))
     state = _string(result_data.get("state"))
+    http_status = raw.get("http_status")
 
     if landed_ref:
         merge_status = "merged"
     elif task_status:
         merge_status = task_status.lower()
+    elif http_status == 202:
+        merge_status = "submitted"
     elif state and state.upper() == "MERGED":
         merge_status = "merged"
     else:
@@ -530,12 +539,14 @@ def merged_pull_request(
 
     return {
         "ok": True,
-        "backend": "bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter",
+        "backend": ("bitbucket-cloud" if kind == "cloud" else "bitbucket-datacenter"),
         "operation": "pull-request-merge",
         "pull_request_id": _string(raw.get("pull_request_id")),
         "strategy": _string(raw.get("strategy")),
         "merge_status": merge_status,
         "landed_ref": landed_ref,
+        "http_status": (http_status if isinstance(http_status, int) else None),
+        "task_url": _string(raw.get("task_url")),
         "result": result_data,
         "raw": raw,
     }
