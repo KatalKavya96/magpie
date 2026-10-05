@@ -1923,6 +1923,24 @@ Four passes, in this order:
    Follow [the Gemini install lifecycle](../../../../docs/adapters/gemini.md#install) to propose and merge its workspace profile and guard registration from this snapshot.
    Preserve unrelated configuration and review conflicts before applying changes.
    Validate the merged profile and hand off live verification to Gemini.
+   **Grok project guard (when Grok is the selected runtime).**
+   Install exactly one Magpie-owned project hook at
+   `<repo-root>/.grok/hooks/magpie-agent-guard.json`. Create `.grok/hooks/`
+   when absent, but never treat that directory as Magpie-owned and never
+   modify or remove unrelated files already present there. Derive the adopter
+   hook from the framework's committed
+   `.grok/hooks/magpie-agent-guard.json`: preserve its event, matcher, handler
+   type, timeout, and `--grok` invocation, changing only the executable path to
+   `$GROK_WORKSPACE_ROOT/.apache-magpie/tools/agent-guard/src/agent_guard/__init__.py`.
+
+   If that exact hook file already exists and differs, surface the diff before
+   replacement; do not overwrite hand-edited content silently. Preserve every
+   other `.grok/hooks/*` file and do not modify `.grok/config.toml`.
+
+   Grok project hooks require an explicit operator trust decision. Tell the
+   operator to review and trust the hook in Grok after installation; never
+   invoke or automate Grok's hook-trust action on their behalf.
+
    Other selected runtimes do not install this profile.
 
 2. **Propagate to every worktree (run `worktree-init`
