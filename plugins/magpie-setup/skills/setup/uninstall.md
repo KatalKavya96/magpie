@@ -313,12 +313,12 @@ pointing at a deleted snapshot.
    before deleting the snapshot, including guard references in linked worktrees.
    Preserve unrelated configuration and show hand-edited policy values for review.
 
-   For Grok, remove only
-   `<repo-root>/.grok/hooks/magpie-agent-guard.json` when it matches the
-   Magpie-owned hook shape. If that exact file is hand-edited, surface the
-   diff before removal. Never delete `.grok/hooks/` itself when other files
-   remain, never remove unrelated `.grok/hooks/*`, never modify
-   `.grok/config.toml`, and never change Grok's project-hook trust state.
+   For Grok, remove only a repository-local
+   `<repo-root>/.grok/hooks/magpie-agent-guard.json` when it matches the Magpie-owned hook shape.
+   If that exact file is hand-edited, surface the diff before removal.
+   Never delete `.grok/hooks/` itself when other files remain.
+   Never remove unrelated `.grok/hooks/*`, modify `.grok/config.toml`, or change Grok's project-hook trust state.
+   A repository uninstall does not uninstall or disable a user's marketplace `magpie-agent-guard` plugin; that plugin remains under the client's own plugin-manager lifecycle.
 
 4. **Snapshot directory.** `rm -rf <snapshot-dir>/`.
 5. **Local lock.** `rm <local-lock>`.

@@ -35,22 +35,25 @@ def _feed(monkeypatch: pytest.MonkeyPatch, payload: object) -> None:
     monkeypatch.setattr("sys.stdin", io.StringIO(text))
 
 
-def _event(
-    command: str,
+# Captured verbatim from Grok Build 1.0.46 (2765805b9442) on 2026-10-08.
+# Trigger: "Run pwd in the terminal and tell me the output."
+# No payload fields were normalized or reconstructed.
+_REAL_PRE_TOOL_USE = r"""{"hookEventName":"pre_tool_use","sessionId":"01a11c20-860b-7ea1-b883-16fdf069a238","cwd":"/private/tmp/magpie-grok-hook-capture","workspaceRoot":"/private/tmp/magpie-grok-hook-capture/","timestamp":"2026-10-08T15:27:41.895713+00:00","transcriptPath":"/Users/kavyakatal/.grok/sessions/%2Fprivate%2Ftmp%2Fmagpie-grok-hook-capture/01a11c20-860b-7ea1-b883-16fdf069a238/updates.jsonl","permissionMode":"default","toolName":"run_terminal_command","toolUseId":"call-7804e01f-ea34-41f2-999f-93ec4bd87d88-0","toolInput":{"command":"pwd","description":"Print the current working directory"},"toolInputTruncated":false,"hook_event_name":"PreToolUse","session_id":"01a11c20-860b-7ea1-b883-16fdf069a238","transcript_path":"/Users/kavyakatal/.grok/sessions/%2Fprivate%2Ftmp%2Fmagpie-grok-hook-capture/01a11c20-860b-7ea1-b883-16fdf069a238/updates.jsonl","permission_mode":"default","tool_name":"run_terminal_command","tool_input":{"command":"pwd","description":"Print the current working directory"},"tool_use_id":"call-7804e01f-ea34-41f2-999f-93ec4bd87d88-0"}"""
+
+
+def _captured_event(
     *,
-    tool_name: str = "run_terminal_command",
-    cwd: object = ".",
+    command: str = "pwd",
+    cwd: object = "/private/tmp/magpie-grok-hook-capture",
 ) -> dict[str, object]:
-    return {
-        "hookEventName": "pre_tool_use",
-        "hook_event_name": "PreToolUse",
-        "sessionId": "test-session",
-        "cwd": cwd,
-        "workspaceRoot": ".",
-        "permissionMode": "default",
-        "toolName": tool_name,
-        "toolInput": {"command": command},
-    }
+    """Return the captured event with only test-specific command/cwd changes."""
+    event = json.loads(_REAL_PRE_TOOL_USE)
+    event["toolInput"]["command"] = command
+    if cwd is None:
+        event.pop("cwd", None)
+    else:
+        event["cwd"] = cwd
+    return event
 
 
 def test_denied_command_emits_exact_grok_decision(
@@ -62,7 +65,7 @@ def test_denied_command_emits_exact_grok_decision(
         "dispatch",
         lambda command, cwd=None: "blocked by test",
     )
-    _feed(monkeypatch, _event("git push"))
+    _feed(monkeypatch, _captured_event(command="git push"))
 
     assert agent_guard.grok_main() == agent_guard.DENY_EXIT
 
@@ -76,22 +79,34 @@ def test_allowed_command_emits_exact_grok_decision(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(agent_guard, "dispatch", lambda command, cwd=None: None)
-    _feed(monkeypatch, _event("git status"))
+    _feed(monkeypatch, _captured_event(command="git status"))
 
     assert agent_guard.grok_main() == agent_guard.ALLOW_EXIT
 
     captured = capsys.readouterr()
-    assert captured.out == '{"decision": "allow"}\n'
+    assert captured.out == ""
     assert captured.err == ""
 
 
-@pytest.mark.parametrize(
-    "tool_name",
-    ["run_terminal_command", "run_terminal_cmd"],
-)
-def test_shell_tool_aliases_reach_dispatch(
+def test_real_captured_pre_tool_use_payload_reaches_dispatch(monkeypatch):
+    """The verbatim Grok 1.0.46 capture reaches the shared dispatcher unchanged."""
+    seen = []
+
+    def fake_dispatch(command, cwd=None):
+        seen.append((command, cwd))
+        return None
+
+    monkeypatch.setattr("agent_guard.dispatch", fake_dispatch)
+    _feed(monkeypatch, _REAL_PRE_TOOL_USE)
+
+    assert agent_guard.grok_main() == agent_guard.ALLOW_EXIT
+    assert seen == [
+        ("pwd", "/private/tmp/magpie-grok-hook-capture"),
+    ]
+
+
+def test_captured_shell_tool_reaches_dispatch(
     monkeypatch: pytest.MonkeyPatch,
-    tool_name: str,
 ) -> None:
     seen: list[tuple[str, str | None]] = []
 
@@ -102,7 +117,7 @@ def test_shell_tool_aliases_reach_dispatch(
     monkeypatch.setattr(agent_guard, "dispatch", fake_dispatch)
     _feed(
         monkeypatch,
-        _event("git status", tool_name=tool_name, cwd="/repo"),
+        _captured_event(command="git status", cwd="/repo"),
     )
 
     assert agent_guard.grok_main() == agent_guard.ALLOW_EXIT
@@ -122,9 +137,7 @@ def test_invalid_or_missing_cwd_forwards_none(
 
     monkeypatch.setattr(agent_guard, "dispatch", fake_dispatch)
 
-    event = _event("git status", cwd=cwd)
-    if cwd is None:
-        event.pop("cwd")
+    event = _captured_event(command="git status", cwd=cwd)
 
     _feed(monkeypatch, event)
 
@@ -194,18 +207,32 @@ def test_cli_routes_grok_flag_to_adapter(
     assert agent_guard.cli(["--grok"]) == 37
 
 
-def test_default_invocation_remains_claude(
+def test_default_invocation_detects_grok_plugin_hook(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GROK_HOOK_EVENT", "pre_tool_use")
-    monkeypatch.setattr(agent_guard, "main", lambda: 41)
+    monkeypatch.setattr(
+        agent_guard,
+        "main",
+        lambda: pytest.fail("Grok plugin hook must not route to Claude"),
+    )
+    monkeypatch.setattr(agent_guard, "grok_main", lambda: 41)
+
+    assert agent_guard.cli([]) == 41
+
+
+def test_default_invocation_without_grok_env_remains_claude(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GROK_HOOK_EVENT", raising=False)
+    monkeypatch.setattr(agent_guard, "main", lambda: 43)
     monkeypatch.setattr(
         agent_guard,
         "grok_main",
-        lambda: pytest.fail("Explicit --grok is required"),
+        lambda: pytest.fail("Non-Grok invocation must stay on Claude"),
     )
 
-    assert agent_guard.cli([]) == 41
+    assert agent_guard.cli([]) == 43
 
 
 def test_project_hook_runs_grok_adapter_end_to_end() -> None:
@@ -217,7 +244,7 @@ def test_project_hook_runs_grok_adapter_end_to_end() -> None:
     groups = config["hooks"]["PreToolUse"]
 
     assert len(groups) == 1
-    assert groups[0]["matcher"] == "^(run_terminal_command|run_terminal_cmd)$"
+    assert groups[0]["matcher"] == "Bash"
 
     handlers = groups[0]["hooks"]
     assert len(handlers) == 1
@@ -227,8 +254,8 @@ def test_project_hook_runs_grok_adapter_end_to_end() -> None:
     assert handler["timeout"] == 30
     assert handler["command"].endswith('tools/agent-guard/src/agent_guard/__init__.py" --grok')
 
-    event = _event(
-        "git commit -m 'x\\n\\nCo-Authored-By: A <a@b.c>'",
+    event = _captured_event(
+        command="git commit -m 'x\\n\\nCo-Authored-By: A <a@b.c>'",
         cwd=str(repo_root),
     )
 

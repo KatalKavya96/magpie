@@ -889,6 +889,22 @@ Report missing components and configuration drift without modifying files.
 An absent profile is skipped unless Gemini secure setup was requested; in that case, point to `setup-isolated-setup-install`.
 A static pass does not replace live verification in Gemini.
 
+### 8h.1. Grok action guard (if configured)
+
+When Grok is a selected runtime, distinguish marketplace/plugin wiring from a source or pinned-snapshot project hook.
+For a marketplace install, confirm that `magpie-agent-guard` is installed and enabled and that no duplicate `.grok/hooks/magpie-agent-guard.json` was added merely to reach the executable.
+For a source or pinned snapshot, confirm that `.grok/hooks/magpie-agent-guard.json` exists, uses the `Bash` matcher, invokes `--grok`, and resolves to an existing `agent_guard/__init__.py`.
+
+Run `grok inspect --json` and report the loaded Magpie hook source.
+Warn when no Magpie guard is active or when more than one Magpie guard would inspect the same shell command.
+
+Static wiring is not sufficient.
+Ask the operator to perform one harmless allowed shell command and one known Magpie denial in Grok.
+A broken launcher or hook command can fail open, so a live denial is the verification that the guard is actually enforcing policy.
+
+Never grant, reset, or otherwise change Grok project-hook trust during verification.
+See [the Grok verification contract](../../../../docs/adapters/grok.md#verify).
+
 ### 8i. Adversarial reviewers (if configured)
 
 When `adversarial-review.md` resolves (the personal layer first, then
