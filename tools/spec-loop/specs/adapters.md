@@ -81,7 +81,8 @@ by swapping the adapter, not the skill.
   state and source commit alongside the `/statuses` build checks, matching
   the Data Center payload (#1526).
   Confirmed Cloud-only pull-request writes cover comments,
-  approve/unapprove, request-changes, decline, and `pr merge --strategy
+  approve/unapprove, request-changes, decline, backend-neutral `reject`,
+  and `pr merge --strategy
   {merge,squash,rebase} --expected-source-commit <sha>`, which re-checks the
   head commit immediately before the merge POST so a moved head fails closed
   (#1471); it does not enforce approval or build gates itself.
@@ -315,8 +316,9 @@ uv run --all-packages --group dev pytest tools/github-rollup/tests
   mutation. The bridge executes only the confirmed action; current write
   coverage is Bitbucket Cloud issue-comment creation, Bitbucket Cloud
   pull-request comment creation, backend-neutral `post_review` through
-  comment/approve/request-changes, and Bitbucket Cloud pull-request
-  approve/unapprove, request-changes/remove-request-changes, decline, and
+  comment/approve/request-changes, backend-neutral `reject`, and Bitbucket
+  Cloud pull-request approve/unapprove, request-changes/remove-request-changes,
+  decline, and
   strategy-aware merge actions pinned to a caller-confirmed source commit
   (7–40 hex characters); gate checks before a merge are the caller's
   responsibility via `pr merge-checks`.

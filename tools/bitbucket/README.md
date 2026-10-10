@@ -79,6 +79,7 @@ Implemented read-only commands:
 - `magpie-bitbucket pr request-changes <id>` (Cloud-only write)
 - `magpie-bitbucket pr remove-request-changes <id>` (Cloud-only write)
 - `magpie-bitbucket pr decline <id>` (Cloud-only write)
+- `magpie-bitbucket pr reject <id> --reason-file <path>` (Cloud-only write)
 - `magpie-bitbucket pr merge <id> --strategy {merge,squash,rebase} --expected-source-commit <sha>` (Cloud-only write)
 - `magpie-bitbucket pr merge-task-status <id> <task-id>` (Cloud-only read)
 - `magpie-bitbucket pr tasks <id>`
@@ -99,7 +100,7 @@ activity where exposed by the configured Bitbucket backend.
 
 Write coverage is intentionally narrow. The bridge supports confirmed
 Bitbucket Cloud issue-comment creation, top-level pull-request comment creation,
-and pull-request approve/unapprove, request-changes/remove-request-changes, decline, and merge actions after the calling skill has obtained
+and pull-request approve/unapprove, request-changes/remove-request-changes, decline, backend-neutral reject, and merge actions after the calling skill has obtained
 explicit user confirmation. Other writes, such as editing/deleting comments,
 creating/updating issues, changing branches, or triggering builds, remain out
 of scope and should be added separately with narrow command surfaces and
@@ -163,7 +164,7 @@ surface:
 | Change requests | `post_review` / `pr review <id> --verdict {comment,approve,request-changes} --body-file <path>` | Partial write, Cloud only | Implements the backend-neutral review contract for Bitbucket Cloud after explicit caller-side confirmation. `comment` posts the review body only. `approve` and `request-changes` post the body first and then apply the corresponding Bitbucket verdict. If the second mutation fails after the body was posted, the command fails with an explicit partial-outcome warning so callers inspect the PR before retrying. Data Center post-review writes remain unsupported. |
 | Change requests | `land` / `pr merge <id> --strategy {merge,squash,rebase} --expected-source-commit <sha>` | Partial write, Cloud only | Submits a Bitbucket Cloud pull-request merge after explicit caller-side confirmation. The caller must run and inspect `pr merge-checks <id>` before invoking this command; `pr merge` does not independently enforce approval, build-status, or merge-check gates. The expected source commit (7–40 hexadecimal characters, rejected before any request otherwise) is checked immediately before the merge POST so a changed PR head fails closed. The requested strategy is mapped to Bitbucket's merge strategy (reported as `backend_strategy`) and the resulting merge commit is returned as `landed_ref` when available. An asynchronous merge may be accepted before a `landed_ref` is available; `merge_status` is then `submitted`, with Bitbucket's own task state in `task_status` and the task URL in `task_url`. A timeout on the merge POST is reported as "outcome unknown" — check `pr get <id>` before retrying, since the merge may already be running. Data Center merge writes remain unsupported. |
 | Change requests | `pr merge-task-status <id> <task-id>` | Partial read-only, Cloud only | Fetches the status of an asynchronous Bitbucket Cloud pull-request merge task. Pending tasks normalize to `merge_status=submitted`; successful tasks expose `merge_result.merge_commit.hash` as `landed_ref`; failed tasks normalize to `merge_status=failed`. Data Center merge task-status reads remain unsupported. |
-| Change requests | `reject` | Not implemented | Follow-up work for #606. |
+| Change requests | `reject` / `pr reject <id> --reason-file <path>` | Partial write, Cloud only | Implements the backend-neutral reject contract for Bitbucket Cloud after explicit caller-side confirmation. Posts the confirmed rejection reason as a pull-request comment, then declines the pull request. If the decline fails after the reason was posted, the command reports the partial outcome and directs the caller to inspect the PR before retrying to avoid duplicating the rejection comment. Data Center reject writes remain unsupported. |
 | Tracker | `issue list-open` / `issue get <id>` / `issue comments <id>` / `issue attachments <id>` | Partial read-only, Cloud only | Lists and fetches Bitbucket Cloud issues, issue comments, and issue attachment metadata/links where the repository issue tracker is enabled. Bitbucket Data Center native issue reads/comments/attachments are unsupported; linked Jira handoff remains separate follow-up work. |
 | Tracker | `issue comment <id> --body-file <path>` | Partial write, Cloud only | Creates one Bitbucket Cloud issue comment from a caller-supplied body file. The calling skill must obtain explicit user confirmation before invoking this mutation. Bitbucket Data Center native issue comment writes are unsupported; linked Jira coverage remains separate. |
 | CI | `pr status <id>` | Partial read-only | Fetches build/status checks for a pull request. This does not trigger, retry, or mutate Pipelines/builds. |

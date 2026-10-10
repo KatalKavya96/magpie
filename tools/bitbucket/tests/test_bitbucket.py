@@ -61,6 +61,7 @@ from magpie_bitbucket.normalize import (
     pull_request_status,
     pull_request_task,
     pull_request_tasks,
+    rejected_pull_request,
     repository,
     repository_restrictions,
 )
@@ -4641,3 +4642,258 @@ def test_cli_pr_review_rejects_invalid_verdict_before_write(
 
     assert exc.value.code == 2
     mock_post_review.assert_not_called()
+
+
+def test_cloud_reject_pull_request_posts_reason_before_decline(
+    cloud_env: None,
+) -> None:
+    order: list[str] = []
+
+    def create_comment(*args: Any) -> dict[str, Any]:
+        order.append("comment")
+        return {
+            "pull_request_id": "7",
+            "comment": {
+                "id": 601,
+                "content": {"raw": "Superseded by #8."},
+                "deleted": False,
+            },
+        }
+
+    def decline(*args: Any) -> dict[str, Any]:
+        order.append("decline")
+        return {
+            "pull_request_id": "7",
+            "pull_request": {
+                "id": 7,
+                "state": "DECLINED",
+                "title": "Example PR",
+            },
+        }
+
+    with (
+        patch(
+            "magpie_bitbucket.cloud.create_pull_request_comment",
+            side_effect=create_comment,
+        ),
+        patch(
+            "magpie_bitbucket.cloud.decline_pull_request",
+            side_effect=decline,
+        ),
+    ):
+        result = cloud.reject_pull_request(
+            load_config(),
+            "7",
+            "Superseded by #8.",
+        )
+
+    assert order == ["comment", "decline"]
+    assert result["pull_request_id"] == "7"
+    assert result["reason"] == "Superseded by #8."
+    assert result["comment"]["id"] == 601
+    assert result["pull_request"]["state"] == "DECLINED"
+
+
+def test_cloud_reject_pull_request_rejects_empty_reason_before_write(
+    cloud_env: None,
+) -> None:
+    with (
+        patch("magpie_bitbucket.cloud.create_pull_request_comment") as mock_comment,
+        patch("magpie_bitbucket.cloud.decline_pull_request") as mock_decline,
+    ):
+        with pytest.raises(
+            BitbucketError,
+            match="rejection reason must not be empty",
+        ):
+            cloud.reject_pull_request(
+                load_config(),
+                "7",
+                "   ",
+            )
+
+    mock_comment.assert_not_called()
+    mock_decline.assert_not_called()
+
+
+def test_cloud_reject_pull_request_reports_partial_failure(
+    cloud_env: None,
+) -> None:
+    with (
+        patch(
+            "magpie_bitbucket.cloud.create_pull_request_comment",
+            return_value={
+                "pull_request_id": "7",
+                "comment": {
+                    "id": 601,
+                    "content": {"raw": "Out of scope."},
+                    "deleted": False,
+                },
+            },
+        ),
+        patch(
+            "magpie_bitbucket.cloud.decline_pull_request",
+            side_effect=BitbucketError("decline failed"),
+        ),
+        pytest.raises(
+            BitbucketError,
+            match="rejection reason was posted",
+        ) as exc,
+    ):
+        cloud.reject_pull_request(
+            load_config(),
+            "7",
+            "Out of scope.",
+        )
+
+    assert "before retrying" in str(exc.value)
+    assert "pr discussion 7" in str(exc.value)
+    assert "pr get 7" in str(exc.value)
+
+
+def test_datacenter_reject_pull_request_unsupported(
+    datacenter_env: None,
+) -> None:
+    with pytest.raises(
+        BitbucketError,
+        match="Data Center pull request reject writes are not supported",
+    ):
+        datacenter.reject_pull_request(
+            load_config(),
+            "9",
+            "Out of scope.",
+        )
+
+
+def test_normalize_rejected_pull_request() -> None:
+    normalized = rejected_pull_request(
+        "cloud",
+        {
+            "pull_request_id": "7",
+            "reason": "Superseded by #8.",
+            "comment": {
+                "id": 601,
+                "content": {"raw": "Superseded by #8."},
+                "user": {"display_name": "Alice"},
+                "deleted": False,
+            },
+            "pull_request": {
+                "id": 7,
+                "state": "DECLINED",
+                "title": "Example PR",
+            },
+        },
+    )
+
+    assert normalized["ok"] is True
+    assert normalized["backend"] == "bitbucket-cloud"
+    assert normalized["operation"] == "pull-request-reject"
+    assert normalized["pull_request_id"] == "7"
+    assert normalized["reason"] == "Superseded by #8."
+    assert normalized["comment"]["body"] == "Superseded by #8."
+    assert normalized["pull_request"]["state"] == "DECLINED"
+
+
+@patch("magpie_bitbucket.cloud.reject_pull_request")
+def test_cli_pr_reject_cloud(
+    mock_reject_pull_request: MagicMock,
+    cloud_env: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    reason_file = tmp_path / "reason.md"
+    reason_file.write_text("Superseded by #8.", encoding="utf-8")
+
+    mock_reject_pull_request.return_value = {
+        "pull_request_id": "7",
+        "reason": "Superseded by #8.",
+        "comment": {
+            "id": 601,
+            "content": {"raw": "Superseded by #8."},
+            "user": {"display_name": "Alice"},
+            "deleted": False,
+        },
+        "pull_request": {
+            "id": 7,
+            "state": "DECLINED",
+            "title": "Example PR",
+        },
+    }
+
+    exit_code = main(
+        [
+            "pr",
+            "reject",
+            "7",
+            "--reason-file",
+            str(reason_file),
+        ]
+    )
+
+    assert exit_code == 0
+
+    mock_reject_pull_request.assert_called_once_with(
+        load_config(),
+        "7",
+        "Superseded by #8.",
+    )
+
+    output = json.loads(capsys.readouterr().out)
+
+    assert output["ok"] is True
+    assert output["operation"] == "pull-request-reject"
+    assert output["reason"] == "Superseded by #8."
+    assert output["comment"]["body"] == "Superseded by #8."
+    assert output["pull_request"]["state"] == "DECLINED"
+
+
+@patch("magpie_bitbucket.cloud.reject_pull_request")
+def test_cli_pr_reject_rejects_empty_reason_before_write(
+    mock_reject_pull_request: MagicMock,
+    cloud_env: None,
+    tmp_path: Path,
+) -> None:
+    reason_file = tmp_path / "empty-reason.md"
+    reason_file.write_text("   ", encoding="utf-8")
+
+    with pytest.raises(
+        BitbucketError,
+        match="Comment body file must not be empty",
+    ):
+        main(
+            [
+                "pr",
+                "reject",
+                "7",
+                "--reason-file",
+                str(reason_file),
+            ]
+        )
+
+    mock_reject_pull_request.assert_not_called()
+
+
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_cli_pr_reject_datacenter_fails_without_request(
+    mock_build_opener: MagicMock,
+    datacenter_env: None,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    reason_file = tmp_path / "reason.md"
+    reason_file.write_text("Out of scope.", encoding="utf-8")
+
+    exit_code = package_main(
+        [
+            "pr",
+            "reject",
+            "9",
+            "--reason-file",
+            str(reason_file),
+        ]
+    )
+
+    assert exit_code == 1
+    mock_build_opener.assert_not_called()
+
+    stderr = capsys.readouterr().err
+    assert "reject writes are not supported" in stderr

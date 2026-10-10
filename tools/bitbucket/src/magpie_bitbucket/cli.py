@@ -193,6 +193,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Pull request ID whose change request to remove.",
     )
 
+    pr_reject = pr_subparsers.add_parser(
+        "reject",
+        help="Reject a pull request with a reason after caller-side confirmation.",
+    )
+    pr_reject.add_argument(
+        "pull_request_id",
+        help="Pull request ID to reject.",
+    )
+    pr_reject.add_argument(
+        "--reason-file",
+        required=True,
+        help="Path to the confirmed rejection reason.",
+    )
+
     pr_decline = pr_subparsers.add_parser(
         "decline",
         help="Decline a pull request after caller-side confirmation.",
@@ -374,6 +388,18 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
             config.kind,
             raw,
             requested=False,
+        )
+
+    if args.subcommand == "pr" and args.pr_action == "reject":
+        reason = _read_body_file(args.reason_file)
+        raw = backend.reject_pull_request(
+            config,
+            args.pull_request_id,
+            reason,
+        )
+        return normalize.rejected_pull_request(
+            config.kind,
+            raw,
         )
 
     if args.subcommand == "pr" and args.pr_action == "decline":

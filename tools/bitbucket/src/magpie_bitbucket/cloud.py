@@ -736,6 +736,43 @@ def post_pull_request_review(
     }
 
 
+def reject_pull_request(
+    config: BitbucketConfig,
+    pull_request_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    """Reject one Bitbucket Cloud pull request with a confirmed reason."""
+    if not reason.strip():
+        raise BitbucketError("Pull request rejection reason must not be empty")
+
+    comment_result = create_pull_request_comment(
+        config,
+        pull_request_id,
+        reason,
+    )
+    comment = comment_result.get("comment")
+
+    try:
+        decline_result = decline_pull_request(
+            config,
+            pull_request_id,
+        )
+    except BitbucketError as exc:
+        raise BitbucketError(
+            "Bitbucket pull request rejection reason was posted, but the "
+            f"decline failed. Inspect `pr discussion {pull_request_id}` and "
+            f"`pr get {pull_request_id}` before retrying to avoid duplicating "
+            "the rejection comment."
+        ) from exc
+
+    return {
+        "pull_request_id": pull_request_id,
+        "reason": reason,
+        "comment": comment,
+        "pull_request": decline_result.get("pull_request"),
+    }
+
+
 def get_pull_request_discussion(config: BitbucketConfig, pull_request_id: str) -> dict[str, Any]:
     """Fetch pull request comments from Bitbucket Cloud."""
     workspace = quote_path(require(config.workspace, "BITBUCKET_WORKSPACE"))
