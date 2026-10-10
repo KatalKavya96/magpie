@@ -152,10 +152,12 @@ Install the `magpie-agent-guard` plugin:
 /plugin install magpie-agent-guard@apache-magpie
 ```
 
-That is the whole installation. The plugin's manifest
-([`plugins/magpie-agent-guard/.claude-plugin/plugin.json`](../../plugins/magpie-agent-guard/.claude-plugin/plugin.json))
-registers the `PreToolUse` hook itself and resolves the engine under
-`${CLAUDE_PLUGIN_ROOT}`, so the guard runs out of the installed plugin. **No
+That is the whole installation.
+The plugin's
+[`hooks/hooks.json`](../../plugins/magpie-agent-guard/hooks/hooks.json)
+registers the `PreToolUse` hook and resolves the engine from the plugin root
+with `${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}`, so the guard runs out of
+the installed plugin. **No
 file is copied into any repository, no `settings.local.json` entry is written,
 and a git worktree needs no seeding** — it is an ordinary checkout, and the
 guard is active in it the moment the plugin is installed.
@@ -356,8 +358,10 @@ See [the Copilot install lifecycle](../../docs/adapters/copilot.md#install).
 The repository's
 [`.grok/hooks/magpie-agent-guard.json`](../../.grok/hooks/magpie-agent-guard.json)
 uses Grok's `PreToolUse` event with the `Bash` matcher and invokes `--grok`.
-The adapter was verified with Grok Build 1.0.46 (`2765805b9442`) using a real
-captured event whose concrete shell tool was `run_terminal_command`.
+The payload contract was verified with Grok Build 1.0.46
+(`2765805b9442`) using a real captured event whose concrete shell tool was
+`run_terminal_command`. Marketplace/plugin loading and failure behavior were
+additionally verified on Grok Build 1.0.50 (`c58f321264ba`).
 
 Grok sends the command in `toolInput.command`.
 The adapter forwards that command and an optional string `cwd` to the shared
@@ -367,19 +371,24 @@ An allowed shell command exits 0 without emitting a decision.
 
 Marketplace installs do not need a second repository-local hook merely to reach
 the executable.
-Grok reads Claude-compatible plugins and hooks, and plugin hooks receive the
-Grok hook environment.
-The existing no-argument `magpie-agent-guard` plugin entry therefore selects
-`grok_main()` when `GROK_HOOK_EVENT` is present.
+The plugin registers its Grok-compatible hook in `hooks/hooks.json`, resolves
+the bundled runtime with `${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}`, and
+selects `grok_main()` when `GROK_HOOK_EVENT` is present.
+The runtime is materialized as real files inside the plugin because Grok's
+local plugin installation does not preserve the former out-of-root symlink.
 
 Framework checkouts and pinned snapshots may use the Magpie-owned project hook.
 Project hooks remain trust-gated by Grok.
 Magpie must never grant or reset that trust on the operator's behalf.
 
-Malformed or unrelated events fail open.
-A missing or broken launcher also removes the protection rather than becoming a
-safe substitute for verification, so installation verification must include a
-known live denial.
+Malformed or unrelated events handled inside the adapter fail open by
+returning exit 0.
+
+Hook-process failure is different. On Grok Build 1.0.50, a bare exit 2 with no
+deny JSON blocked the shell tool call, and a missing Python hook target that
+exited 2 was also blocked. Installation verification should still include a
+known live denial so wiring, packaging, and runtime policy are exercised
+together.
 
 See the [Grok adapter contract](../../docs/adapters/grok.md).
 

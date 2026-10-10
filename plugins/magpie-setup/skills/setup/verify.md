@@ -433,8 +433,8 @@ that the engine path it names **resolves**; a wired hook pointing at
 a file that is not there is the failure mode worth catching, because
 a guard that never loads does not raise — it silently stops denying.
 
-1. **Plugin install** — the `magpie-agent-guard` plugin is
-   installed. Its manifest carries the hook, so there is nothing
+1. **Plugin install** — the `magpie-agent-guard` plugin is installed.
+   Its `hooks/hooks.json` carries the hook, so there is nothing
    repository-local to check and nothing to remediate per worktree.
    - ⚠ if no agent-guard install of any kind is found: print
      `/plugin install magpie-agent-guard@apache-magpie`.
@@ -900,7 +900,10 @@ Warn when no Magpie guard is active or when more than one Magpie guard would ins
 
 Static wiring is not sufficient.
 Ask the operator to perform one harmless allowed shell command and one known Magpie denial in Grok.
-A broken launcher or hook command can fail open, so a live denial is the verification that the guard is actually enforcing policy.
+Malformed input handled inside the adapter is fail-open, while Grok Build
+1.0.50 was observed to block hook-process exit 2. A live denial is still the
+verification that the configured hook, packaged runtime, and Magpie policy are
+actually enforcing together.
 
 Never grant, reset, or otherwise change Grok project-hook trust during verification.
 See [the Grok verification contract](../../../../docs/adapters/grok.md#verify).

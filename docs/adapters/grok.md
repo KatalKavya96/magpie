@@ -45,9 +45,14 @@ This does not add Grok spec-loop, headless-runner, or dedicated sandbox-profile 
 
 ## Verified runtime
 
-The adapter was verified against:
+The `PreToolUse` payload contract was captured against:
 
 `grok 1.0.46 (2765805b9442)`
+
+Marketplace/plugin loading and failure semantics were additionally verified
+against:
+
+`grok 1.0.50` (`c58f321264ba`)
 
 A real `PreToolUse` payload captured on 2026-10-08 is retained in
 `tools/agent-guard/tests/test_grok.py`.
@@ -60,11 +65,15 @@ shell command in `toolInput.command`.
 ### Marketplace plugin
 
 Grok reads Claude-compatible marketplaces, plugins, and hooks without extra compatibility setup.
-When the existing `magpie-agent-guard` marketplace plugin runs under Grok,
-Grok supplies `GROK_HOOK_EVENT`.
-The no-argument dispatcher detects that variable and selects `grok_main()`.
-The executable therefore remains inside the installed substrate plugin rather
-than requiring an `.apache-magpie/` snapshot only to reach the guard.
+The `magpie-agent-guard` plugin registers its hook through `hooks/hooks.json`.
+Its command resolves the bundled guard through
+`${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}`.
+Grok supplies `GROK_HOOK_EVENT`, and the no-argument dispatcher detects that
+variable and selects `grok_main()`.
+
+The guard runtime is materialized as real files inside the plugin rather than
+through an out-of-root symlink, because Grok's local plugin installation does
+not preserve that symlink target.
 
 ### Framework checkout
 
@@ -102,11 +111,14 @@ A denial emits a Grok deny decision containing the shared guard reason and exits
 with the guard deny code.
 An allowed shell command exits 0 without emitting a decision.
 
-Malformed input, unrelated tools, or an invalid command field are ignored and
-fail open.
-A missing or broken hook executable likewise does not provide protection, so
-installation verification must exercise a known allow and a known denial rather
-than treating configuration presence as sufficient.
+Malformed input, unrelated tools, or an invalid command field handled by the
+adapter are ignored and fail open by returning exit 0.
+
+Hook-process failure has different semantics. On Grok 1.0.50, a hook process
+that exits 2 blocks the tool call even without deny JSON. A missing Python hook
+target likewise produced exit 2 and blocked the shell call. Installation
+verification should still exercise a known allow and a known denial rather than
+treating configuration presence as sufficient.
 
 ## Verify
 
@@ -114,7 +126,8 @@ Use:
 
 `grok inspect --json`
 
-Confirm that exactly one intended Magpie action-guard hook is active.
+Confirm that the intended Magpie action-guard hook is active and that the
+selected installation method has not introduced a duplicate project hook.
 
 For a source or snapshot project hook, verify that its command resolves to an
 existing `agent_guard/__init__.py`.
@@ -144,11 +157,17 @@ It does not uninstall a user's marketplace plugin and does not change Grok trust
 This integration is action-guard only.
 It does not add a Grok-specific spec-loop runner or headless execution profile.
 
-Hook failure is fail-open, so a broken launcher can silently remove the Magpie
-enforcement layer.
-Verification must therefore include a real denial probe.
+Malformed or unrelated input handled inside the adapter is deliberately
+fail-open. Hook-process exit 2 is fail-closed on the Grok 1.0.50 runtime tested:
+both a bare `exit 2` hook and a missing Python hook target blocked the shell
+tool call.
 
-The tested runtime is Grok Build 1.0.46.
+Verification must still include a real denial probe so configuration,
+packaging, and runtime behavior are checked together.
+
+The captured payload contract comes from Grok Build 1.0.46.
+Marketplace loading, bundled-runtime execution, policy denial, and exit-2
+failure behavior were verified on Grok Build 1.0.50.
 Future Grok hook-schema changes require a fresh runtime capture before changing
 the adapter contract.
 
