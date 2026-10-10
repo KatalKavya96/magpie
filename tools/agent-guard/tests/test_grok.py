@@ -207,38 +207,42 @@ def test_cli_routes_grok_flag_to_adapter(
     assert agent_guard.cli(["--grok"]) == 37
 
 
-def test_default_invocation_detects_grok_plugin_hook(
+def test_default_invocation_routes_real_grok_payload_by_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("GROK_HOOK_EVENT", "pre_tool_use")
+    _feed(monkeypatch, _REAL_PRE_TOOL_USE)
+    monkeypatch.setattr(agent_guard, "_grok_event", lambda event: 41)
     monkeypatch.setattr(
         agent_guard,
-        "main",
-        lambda: pytest.fail("Grok plugin hook must not route to Claude"),
+        "_claude_event",
+        lambda event: pytest.fail("Grok payload must not route to Claude"),
     )
-    monkeypatch.setattr(agent_guard, "grok_main", lambda: 41)
 
     assert agent_guard.cli([]) == 41
 
 
-def test_default_invocation_without_grok_env_remains_claude(
+def test_default_invocation_routes_claude_payload_by_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("GROK_HOOK_EVENT", raising=False)
-    monkeypatch.setattr(agent_guard, "main", lambda: 43)
+    _feed(
+        monkeypatch,
+        json.dumps({"tool_name": "Bash", "tool_input": {"command": "git status"}}),
+    )
+    monkeypatch.setenv("GROK_HOOK_EVENT", "pre_tool_use")
+    monkeypatch.setattr(agent_guard, "_claude_event", lambda event: 43)
     monkeypatch.setattr(
         agent_guard,
-        "grok_main",
-        lambda: pytest.fail("Non-Grok invocation must stay on Claude"),
+        "_grok_event",
+        lambda event: pytest.fail("Inherited GROK_HOOK_EVENT must not reroute a Claude payload"),
     )
 
     assert agent_guard.cli([]) == 43
 
 
-def test_project_hook_runs_grok_adapter_end_to_end() -> None:
-    """The committed Grok hook must invoke this adapter, not the tool command."""
+def test_project_hook_template_runs_grok_adapter_end_to_end() -> None:
+    """The setup template must invoke this adapter, not the tool command."""
     repo_root = Path(agent_guard.__file__).resolve().parents[4]
-    hook_file = repo_root / ".grok" / "hooks" / "magpie-agent-guard.json"
+    hook_file = repo_root / "plugins" / "magpie-setup" / "templates" / "grok-agent-guard-hook.json"
 
     config = json.loads(hook_file.read_text())
     groups = config["hooks"]["PreToolUse"]

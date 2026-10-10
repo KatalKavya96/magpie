@@ -57,7 +57,7 @@ so every wired harness enforces an identical rule set from one source of truth:
   Grok Build 1.0.46 was observed emitting `run_terminal_command` with the shell
   command in `toolInput.command`.
   Source/snapshot project hooks use `--grok`; marketplace plugin hooks are
-  selected automatically when Grok supplies `GROK_HOOK_EVENT`.
+  selected automatically from Grok's incoming hook payload shape.
   See [Grok](#grok).
 - **Any other runtime** — the `--check` and `--exec` CLI modes let any
   harness or shell wrapper enforce guard rules without a harness-specific hook
@@ -355,9 +355,11 @@ See [the Copilot install lifecycle](../../docs/adapters/copilot.md#install).
 
 ### Grok
 
-The repository's
-[`.grok/hooks/magpie-agent-guard.json`](../../.grok/hooks/magpie-agent-guard.json)
+The setup project-hook template
+[`plugins/magpie-setup/templates/grok-agent-guard-hook.json`](../../plugins/magpie-setup/templates/grok-agent-guard-hook.json)
 uses Grok's `PreToolUse` event with the `Bash` matcher and invokes `--grok`.
+The Magpie repository itself relies on the enabled marketplace plugin instead,
+so it does not also commit the active project hook.
 The payload contract was verified with Grok Build 1.0.46
 (`2765805b9442`) using a real captured event whose concrete shell tool was
 `run_terminal_command`. Marketplace/plugin loading and failure behavior were
@@ -373,7 +375,7 @@ Marketplace installs do not need a second repository-local hook merely to reach
 the executable.
 The plugin registers its Grok-compatible hook in `hooks/hooks.json`, resolves
 the bundled runtime with `${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}`, and
-selects `grok_main()` when `GROK_HOOK_EVENT` is present.
+selects the Grok adapter from the incoming camelCase hook payload.
 The runtime is materialized as real files inside the plugin because Grok's
 local plugin installation does not preserve the former out-of-root symlink.
 

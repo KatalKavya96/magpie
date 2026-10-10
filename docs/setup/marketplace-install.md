@@ -152,7 +152,7 @@ When `magpie-agent-guard` is installed from the Apache Magpie marketplace, Grok 
 Do not create an `.apache-magpie/` snapshot or a second project hook merely to reach the marketplace-installed guard.
 
 The plugin hook uses the existing `Bash` matcher.
-Grok supplies `GROK_HOOK_EVENT` for hook execution, and the shared dispatcher uses that signal to select the Grok adapter automatically.
+The shared dispatcher selects the Grok adapter automatically from Grok's camelCase hook payload shape.
 
 Verify the loaded hook with:
 

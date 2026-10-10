@@ -22,13 +22,11 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-
 # Grok Build
 
 **Capability:** platform:harness
 
-Grok Build is supported in this PR for the deterministic Magpie action guard.
+Grok Build is supported for the deterministic Magpie action guard.
 This does not add Grok spec-loop, headless-runner, or dedicated sandbox-profile support.
 
 ## Harness contract
@@ -36,7 +34,7 @@ This does not add Grok spec-loop, headless-runner, or dedicated sandbox-profile 
 | Surface | Grok contract | Magpie integration |
 |---|---|---|
 | Hook event | `PreToolUse` | `agent-guard` |
-| Shell matcher | `Bash` | `.grok/hooks/magpie-agent-guard.json` or plugin hook |
+| Shell matcher | `Bash` | marketplace plugin or setup-installed project hook |
 | Captured shell tool | `run_terminal_command` | reads `toolInput.command` |
 | Workspace path | `GROK_WORKSPACE_ROOT` | source/snapshot project hook |
 | Plugin path | `GROK_PLUGIN_ROOT` | marketplace/plugin hook |
@@ -54,6 +52,11 @@ against:
 
 `grok 1.0.50` (`c58f321264ba`)
 
+The shared marketplace hook was also live-verified on Claude Code 2.1.287.
+With the rebuilt `magpie-agent-guard` plugin installed from this checkout,
+`git commit --no-verify --dry-run` was denied by
+`agent-guard[no-verify]` before Git executed.
+
 A real `PreToolUse` payload captured on 2026-10-08 is retained in
 `tools/agent-guard/tests/test_grok.py`.
 The capture was triggered by asking Grok to run `pwd`.
@@ -68,8 +71,9 @@ Grok reads Claude-compatible marketplaces, plugins, and hooks without extra comp
 The `magpie-agent-guard` plugin registers its hook through `hooks/hooks.json`.
 Its command resolves the bundled guard through
 `${GROK_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}`.
-Grok supplies `GROK_HOOK_EVENT`, and the no-argument dispatcher detects that
-variable and selects `grok_main()`.
+The no-argument dispatcher selects the Grok adapter from the incoming
+camelCase `toolName` / `toolInput` payload shape rather than from environment
+variables.
 
 The guard runtime is materialized as real files inside the plugin rather than
 through an out-of-root symlink, because Grok's local plugin installation does
@@ -77,10 +81,14 @@ not preserve that symlink target.
 
 ### Framework checkout
 
-The repository hook is:
+This repository enables `magpie-agent-guard` through `.claude/settings.json`,
+which Grok also reads, so the Magpie checkout intentionally does not commit an
+active `.grok/hooks/magpie-agent-guard.json`.
+That avoids running the same guard twice.
 
-`.grok/hooks/magpie-agent-guard.json`
-
+Source-style adopters that do not use the marketplace plugin may install the
+project-hook template from
+`plugins/magpie-setup/templates/grok-agent-guard-hook.json`.
 It resolves the guard through `GROK_WORKSPACE_ROOT` and invokes `--grok`.
 
 ### Pinned snapshot
@@ -129,6 +137,11 @@ Use:
 Confirm that the intended Magpie action-guard hook is active and that the
 selected installation method has not introduced a duplicate project hook.
 
+In the Magpie framework checkout, `grok inspect --json` should report the
+enabled `magpie-agent-guard` plugin's `hooks/hooks.json` as the single active
+Magpie action-guard hook; the checkout intentionally carries no active
+`.grok/hooks/magpie-agent-guard.json`.
+
 For a source or snapshot project hook, verify that its command resolves to an
 existing `agent_guard/__init__.py`.
 For a marketplace installation, verify that the installed
@@ -145,7 +158,8 @@ Marketplace installations follow the plugin manager lifecycle.
 Updating the plugin updates its bundled guard implementation.
 
 Source and snapshot installs compare only
-`.grok/hooks/magpie-agent-guard.json` with Magpie's expected shape.
+`.grok/hooks/magpie-agent-guard.json` with the expected shape from
+`plugins/magpie-setup/templates/grok-agent-guard-hook.json`.
 A stock stale copy may be refreshed.
 A hand-edited copy must be shown for review before replacement or removal.
 

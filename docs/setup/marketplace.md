@@ -142,7 +142,7 @@ policy-scoped forge operations, so a session needs one allowlist entry instead
 of a dozen wildcard `ask` rules).
 Both run from the installed plugin, so no repository or worktree needs a local copy.
 Grok Build can consume the existing Claude-compatible `magpie-agent-guard` plugin hook.
-The dispatcher selects the Grok protocol when `GROK_HOOK_EVENT` is present.
+The dispatcher selects the Grok protocol from the incoming hook payload shape.
 Neither substrate plugin adds always-on skill context. Pick based on the trade-off between install simplicity and
 always-on token cost (each installed skill advertises a short description to
 the model on **every** turn — see ["always-on" cost](#versioning) below).

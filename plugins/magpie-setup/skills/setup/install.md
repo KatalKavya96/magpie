@@ -1931,7 +1931,7 @@ Four passes, in this order:
    For a framework checkout or pinned snapshot, install exactly one Magpie-owned project hook at
    `<repo-root>/.grok/hooks/magpie-agent-guard.json`.
    Create `.grok/hooks/` when absent, but never treat that directory as Magpie-owned and never modify or remove unrelated files already present there.
-   Derive the adopter hook from the framework's committed `.grok/hooks/magpie-agent-guard.json`.
+   Derive the adopter hook from the framework's committed `plugins/magpie-setup/templates/grok-agent-guard-hook.json`.
    Preserve its event, `Bash` matcher, handler type, timeout, and `--grok` invocation.
    For a pinned snapshot, change only the executable path to
    `$GROK_WORKSPACE_ROOT/.apache-magpie/tools/agent-guard/src/agent_guard/__init__.py`.
