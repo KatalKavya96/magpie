@@ -202,6 +202,19 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Source commit confirmed by the caller before merging.",
     )
 
+    pr_merge_task_status = pr_subparsers.add_parser(
+        "merge-task-status",
+        help="Fetch one asynchronous Bitbucket Cloud pull-request merge task.",
+    )
+    pr_merge_task_status.add_argument(
+        "pull_request_id",
+        help="Pull request ID whose merge task to fetch.",
+    )
+    pr_merge_task_status.add_argument(
+        "task_id",
+        help="Merge task ID returned by Bitbucket Cloud.",
+    )
+
     pr_tasks = pr_subparsers.add_parser("tasks", help="List pull request tasks.")
     pr_tasks.add_argument("pull_request_id", help="Pull request ID whose tasks to fetch.")
 
@@ -346,6 +359,17 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
             args.pull_request_id,
             args.strategy,
             args.expected_source_commit,
+        )
+        return normalize.merged_pull_request(
+            config.kind,
+            raw,
+        )
+
+    if args.subcommand == "pr" and args.pr_action == "merge-task-status":
+        raw = backend.get_pull_request_merge_task_status(
+            config,
+            args.pull_request_id,
+            args.task_id,
         )
         return normalize.merged_pull_request(
             config.kind,
