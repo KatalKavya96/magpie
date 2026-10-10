@@ -4175,6 +4175,28 @@ def test_cloud_get_pull_request_merge_task_status_success(
     assert normalized["landed_ref"] == "abc123def456"
 
 
+@pytest.mark.parametrize("task_status", ["FAILED", "ERROR"])
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_cloud_get_pull_request_merge_task_status_failed(
+    mock_build_opener: MagicMock,
+    cloud_env: None,
+    task_status: str,
+) -> None:
+    mock_opener(mock_build_opener, {"task_status": task_status})
+
+    result = cloud.get_pull_request_merge_task_status(
+        load_config(),
+        "7",
+        "task-123",
+    )
+
+    normalized = merged_pull_request("cloud", result)
+
+    assert normalized["merge_status"] == "failed"
+    assert normalized["task_status"] == task_status
+    assert normalized["landed_ref"] is None
+
+
 def test_datacenter_get_pull_request_merge_task_status_unsupported(
     datacenter_env: None,
 ) -> None:
@@ -4231,7 +4253,7 @@ def test_cli_pr_merge_task_status_cloud(
 
     output = json.loads(capsys.readouterr().out)
 
-    assert output["operation"] == "pull-request-merge"
+    assert output["operation"] == "pull-request-merge-task-status"
     assert output["merge_status"] == "merged"
     assert output["task_status"] == "SUCCESS"
     assert output["landed_ref"] == "abc123def456"

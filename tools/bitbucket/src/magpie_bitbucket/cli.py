@@ -374,6 +374,7 @@ def _dispatch(args: argparse.Namespace, config: BitbucketConfig) -> dict[str, An
         return normalize.merged_pull_request(
             config.kind,
             raw,
+            operation="pull-request-merge-task-status",
         )
 
     if args.subcommand == "pr" and args.pr_action == "tasks":
