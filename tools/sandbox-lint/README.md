@@ -23,7 +23,7 @@
 
 **Capability:** substrate:sandbox
 
-**Harness:** Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Kiro
+**Harness:** Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Kiro, Grok
 
 Lints `.claude/settings.json` against the shipped baseline at
 `tools/sandbox-lint/expected.json`, and against the security
@@ -93,7 +93,7 @@ uv run --project tools/sandbox-lint sandbox-lint --gemini .gemini
 The ordinary regression suite needs no Gemini or Node installation.
 Optional [runtime integration tests](tests/integration/README.md) exercise Gemini's policy engine and Linux sandbox without a model.
 
-**Any other harness (Cursor, …).** `--any-harness`
+**Harnesses without a dedicated config profile (Cursor, Grok, …).** `--any-harness`
 validates the harness-neutral OS-level security posture: checks that the
 two enforcement components shared across all runtimes —
 `tools/agent-isolation/agent-iso.sh` (layer 0, clean-env credential strip)
@@ -181,7 +181,7 @@ baseline drift.
 ## Harness-neutral posture check (any runtime)
 
 For runtimes that do not expose a per-harness sandbox configuration file
-(Cursor and any other agent harness not listed under
+(Cursor, Grok, and any other agent harness not listed under
 `--settings`, `--opencode`, `--kiro`, `--codex`, or `--gemini`), the security posture
 is enforced at the OS level by two harness-agnostic components:
 

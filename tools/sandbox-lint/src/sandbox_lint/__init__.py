@@ -456,7 +456,7 @@ def _lint_any_harness(framework_root: Path | None) -> int:
     ``tools/agent-isolation/`` (layer 0, clean-env wrapper) and
     ``tools/agent-guard/`` (layer 3, action guard) — are present in the
     framework tree. This is the posture check for runtimes that do not have a
-    dedicated per-harness config mode here (Cursor, …).
+    dedicated per-harness config mode here (Cursor, Grok, …).
     """
     from sandbox_lint.posture import PostureViolation, check_posture_violations, find_framework_root
 
@@ -474,7 +474,7 @@ def _lint_any_harness(framework_root: Path | None) -> int:
         return 0
     print(
         f"sandbox-lint: harness-neutral posture violations at {root} —\n"
-        "  For runtimes without a dedicated config mode (Cursor, …)\n"
+        "  For runtimes without a dedicated config mode (Cursor, Grok, …)\n"
         "  the security posture is enforced by these OS-level components:",
         file=sys.stderr,
     )
@@ -576,7 +576,7 @@ def main(argv: list[str] | None = None) -> int:
         metavar="FRAMEWORK_ROOT",
         help=(
             "Validate the harness-neutral security posture for runtimes without "
-            "a dedicated settings file (Cursor, …). "
+            "a dedicated settings file (Cursor, Grok, …). "
             "Checks that the OS-level enforcement components (agent-isolation "
             "layer-0 clean-env wrapper and agent-guard layer-3 action guard) "
             "are present. Optionally supply the framework root directory; "
