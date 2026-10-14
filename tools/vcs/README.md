@@ -10,6 +10,7 @@
   - [Why](#why)
   - [The abstraction](#the-abstraction)
   - [Backends](#backends)
+    - [Subversion (centralized model)](#subversion-centralized-model)
     - [Adding a backend](#adding-a-backend)
   - [How to use](#how-to-use)
 
@@ -49,12 +50,17 @@ VCS the project enables under *Tools enabled → Source control*.
 - **Runtime:** Python 3.11+ run via `uv`; stdlib-only (no runtime
   dependencies). The `dev` group pulls `pytest`, `ruff`, `mypy`.
 - **CLIs:** Depends on the active backend — the tool shells out to the
-  underlying VCS binary: `git`, `hg` or `fossil` for the complete
-  backends. `svn` is detected but its binding is not yet implemented.
-- **Credentials / auth:** None of its own; write operations (`fetch`,
-  `push`) inherit whatever auth the underlying VCS/remote needs.
-- **Network:** Local for read and local-write operations; `fetch` / `push`
-  reach the project's remote (e.g. GitHub) over the network.
+  underlying VCS binary: `git`, `hg`, `fossil` or `svn` (Subversion
+  1.9+, for `info --show-item` and `cleanup --remove-unversioned`; an
+  older `svn` is reported as not installed and every operation errors).
+- **Credentials / auth:** None of its own; operations that reach the
+  remote inherit whatever auth the underlying VCS/remote needs. `svn`
+  runs `--non-interactive`, so it uses a cached credential
+  (`~/.subversion/auth/`) and fails rather than prompting.
+- **Network:** For the distributed backends, local for read and
+  local-write operations; `fetch` / `push` reach the project's remote
+  (e.g. GitHub) over the network. For `svn` (centralized), `log`, `cat`,
+  `diff --base`, `new-branch`, `switch` and `commit` reach the server.
 
 ## Configuration
 
@@ -97,6 +103,11 @@ Write operations stay gated on explicit user confirmation **in the
 calling skill**, exactly as the tracker write paths are — the tool does
 not add its own prompt.
 
+On a centralized backend (`svn`) the change becomes public at `commit`
+and `new-branch` (a server-side copy), not at `push`, so whatever a skill
+runs just before publishing (a confirmation naming the remote, a pre-push
+scrub) must gate those operations instead.
+
 ## Backends
 
 | Backend | Status | Notes |
@@ -104,20 +115,56 @@ not add its own prompt.
 | `git` | **complete** | GitHub's native VCS; the default binding |
 | `hg` (Mercurial) | **complete** | Mercurial VCS support |
 | `fossil` | **complete** | Fossil SCM; pairs with the [`tools/fossil`](../fossil/) forge bridge |
-| `svn` (Subversion) | extension point | detected; centralized model (`distributed = False`) → [#602](https://github.com/apache/magpie/issues/602) |
+| `svn` (Subversion) | **complete** | centralized model (`distributed = False`); see below |
 
-Detection is real for every backend (so `magpie-vcs detect` reports the
-working copy's VCS correctly); the remaining extension-point backends raise an actionable
-`VCSError` naming their tracking issue until the full binding lands.
+### Subversion (centralized model)
+
+The `svn` backend maps the operations onto SVN's centralized model, as
+documented in [`tools/asf-svn/source-control.md`](../asf-svn/source-control.md#centralized-model-divergences):
+
+| Operation | SVN behaviour |
+|---|---|
+| `branch` | the line of work under the `trunk` / `branches/<name>` / `tags/<name>` layout (e.g. `trunk`); outside that layout, the repository-relative path |
+| `new-branch <name>` | server-side `svn copy` of the current line of work to `branches/<name>`, then `svn switch` onto it; `<name>` is one path segment (not empty, `.` or `..`, no `/`) and is URL-quoted |
+| `switch <ref>` | `trunk`, `branches/<n>`, `tags/<n>`, or a bare branch name (one segment, so `team/fix` is refused); a URL or `^/` path is used as-is |
+| `stage <paths…>` | `svn add` for new paths (and unversioned parents), `svn delete` for versioned paths gone from disk, whether given directly or found under a given directory (as `git add <dir>` stages removals); versioned paths still on disk are a no-op |
+| `commit -m` | `svn commit` of every modified or scheduled (`stage`d) path in the working copy — SVN has no staging area, so unrelated edits go too; unversioned files need `stage` first. Written straight to the server |
+| `diff --cached` | error: no staging area |
+| `diff --base <rev>` | the working copy against a **revision** (a number, `HEAD`, `BASE`, `COMMITTED`, `PREV` or `{DATE}`); a line-of-work name such as `main` or `trunk` is refused |
+| `log` | server history up to `HEAD`, one `r<rev> <subject>` line per revision; `--grep` / `--author` are regexes, `--since` takes an ISO 8601 date. With `--grep` / `--author` / `--since`, `-n` caps the output only: the path's whole history (back to `--since`, if given) is fetched before filtering, which is slow on a large shared repository such as svn.apache.org |
+| `cat <rev> <path>` | the working-copy path at `<rev>`, following copy history (so a revision from before a branch was created resolves through trunk). A path no longer in the working copy is read through the revision before the commit that deleted it on this line of work, which reads the line's log (slow on a large repository) |
+| `fetch` | no-op: refs live on the server and every history read queries it |
+| `push` | error: `commit` already published the change |
+
+A caller using the Python API tells the models apart with
+`VCSBackend.distributed`; a skill using the CLI checks for
+`magpie-vcs detect` printing `svn`.
+
+Supported scope, and what is not:
+
+- **Layout.** Only the conventional `trunk` / `branches/<name>` /
+  `tags/<name>` layout, read from the working copy's URL with the
+  *rightmost* marker winning (`^/branches/projects/foo/trunk` is `foo`'s
+  `trunk`). A checkout of a subdirectory that is itself named `trunk`,
+  `branches` or `tags` is misread, and other repository organisations are
+  not supported: there `branch` reports the repository-relative path and
+  `new-branch` / name-based `switch` refuse (pass a URL or `^/` path to
+  `switch`).
+- **Branch names** are one path segment; nested names (`team/fix`) are
+  refused by `new-branch` and by name-based `switch`. A branch or tag may
+  be named `trunk` (`branches/trunk` is a branch, not the trunk).
+- **Partial `new-branch`.** The server-side copy and the local switch are
+  two steps. If the switch fails after the copy succeeded, the branch
+  exists on the server and the working copy stays where it was; recover
+  with `switch <name>`, not another `new-branch`.
 
 ### Adding a backend
 
-A VCS bridge (e.g. #602 Subversion) implements the full binding by
-replacing that backend's `_UnimplementedBackend` base with a concrete
-`VCSBackend` subclass — `detect()`, the read operations, the write
-
-operations — and nothing else changes: detection, dispatch, the CLI,
-and every skill that calls `magpie-vcs` pick it up automatically.
+A VCS bridge (e.g. #603 Jujutsu) implements a concrete `VCSBackend`
+subclass — `detect()`, the read operations, the write operations — and
+registers it in `BACKENDS`; nothing else changes: detection, dispatch,
+the CLI, and every skill that calls `magpie-vcs` pick it up
+automatically.
 
 ## How to use
 

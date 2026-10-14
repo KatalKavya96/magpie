@@ -244,7 +244,7 @@ every piece of context it needs from some combination of the four
 ├── .pre-commit-config.yaml   # prek hook set (see "Running the dev loop")
 ├── pyproject.toml            # Workspace-level Python config
 ├── uv.lock                   # Reproducible Python lockfile
-└── .github/                  # CI: pre-commit, zizmor, link-check, ISSUE_TEMPLATE
+└── .github/                  # CI: pre-commit (incl. lychee), zizmor, ISSUE_TEMPLATE
 ```
 
 The adopter-side `.apache-magpie/` snapshot, the per-user
@@ -1046,14 +1046,16 @@ Good entry points, in rough order of ramp-up cost:
 2. **Documentation improvements.** Read a skill or a doc, find a
    gap or a stale reference, fix it. The `docs/setup/`,
    `docs/security/`, and `docs/pr-management/` trees are all
-   actively curated and welcome refinement. The `link-check`
-   workflow surfaces broken anchors and dead URLs daily — work
-   from that report is high-value.
+   actively curated and welcome refinement.
+   The `lychee` hook in the `pre-commit` workflow checks in-repo links and heading anchors on every pull request and push to `main`,
+   but it runs offline and never fetches external URLs.
+   Finding and fixing a dead external link by hand is therefore high-value work.
 
 3. **Eval fixtures.** [`tools/skill-evals/evals/`](tools/skill-evals/evals/)
    has 1000+ cases across all skills, but every skill could use more
-   edge cases. A new fixture is a directory with `input.json` +
-   `expected.json` + a `README.md` describing the scenario.
+   edge cases.
+   A new case is a `case-N-<name>/` directory under a step's `fixtures/`, holding `report.md` (the mock tool output the model reads) and `expected.json` (the ground truth it must produce), plus an optional `case-meta.json` for runner tags.
+   Describe the scenario in the skill's per-suite `README.md`, one level up.
    Lower friction than skill code changes — no model behaviour
    change, just better test coverage. See
    [`tools/skill-evals/README.md`](tools/skill-evals/README.md)
