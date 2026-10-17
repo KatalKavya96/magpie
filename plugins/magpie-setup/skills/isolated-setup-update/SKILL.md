@@ -18,7 +18,7 @@ when_to_use: >-
 capability: capability:platform
 surface_hash: sha256:1f327e069312dad2
 license: Apache-2.0
-measured_tokens: 5983
+measured_tokens: 6179
 ---
 
 <!-- Placeholder convention (see AGENTS.md#placeholder-convention-used-in-skill-files):
@@ -162,6 +162,11 @@ Walk each:
      A settings file missing those three is behind, so report their *absence* as drift.
      The wildcard link-target hosts that once sat beside them (`*.apache.org`, `*.anthropic.com`, `*.claude.com`, `*.mitre.org`, `*.nist.gov`, `*.github.io`, `gist.github.com`, `astral.sh`, `json.schemastore.org`, `lychee.cli.rs`, `sdkman.io`) were dropped when the hook went offline (`offline = true` in `.lychee.toml`): lychee no longer fetches the URLs the docs link to.
      A settings file without those hosts is current, not stale — report their *presence* as dead weight to drop, never their absence as drift.
+   - **The Gmail token is no longer sandbox-readable.**
+     Earlier defaults put `~/.config/apache-magpie/` in `sandbox.filesystem.allowRead` and `oauth2.googleapis.com` / `gmail.googleapis.com` in `allowedDomains`.
+     Together they let any sandboxed command, which runs without a prompt, use the user's Gmail OAuth token.
+     Report their *presence* in any scope as a **must-fix**, not dead weight, and propose removing all three; keep the `Read(~/.config/apache-magpie/**)` deny.
+     Drafting keeps working through the `oauth-draft` MCP server, which runs outside the sandbox; the `oauth-draft-*` CLIs need an approved run or a per-machine absolute-path exclusion ([`docs/setup/secure-agent-setup.md` → The framework's own `.claude/settings.json`](../../../../docs/setup/secure-agent-setup.md#the-frameworks-own-claudesettingsjson)).
    - **`enableWeakerNetworkIsolation: true`.**
      It is not there for lychee, which runs offline.
      It lets native-TLS CLI tools verify TLS through the sandbox's TLS-terminating proxy — the mechanism the schema notes for `gh` / `gcloud` / `terraform`.
@@ -220,10 +225,10 @@ This is an imperative of the setup, so every gap is a must-fix, reported beside 
 Resolve `$HOME` and read every scope (user, project, project-local, managed where readable).
 Report as a must-fix:
 
-- a missing `vetted-op-read` allow form: each launcher (`uvx --from`, `uv run --project`) with each base (`~/.claude/magpie/vetted-ops` and the resolved `$HOME/.claude/magpie/vetted-ops`), four rules;
-- an allowed form without its matching `sandbox.excludedCommands` entry (the absolute pair in the same per-machine file as its allow rules), since such a call runs sandboxed and its `gh` fails silently;
-- the absolute pair in the committed project settings rather than user scope or `settings.local.json`;
-- any `permissions.ask` rule that matches a `vetted-op-read` command in any of the four forms, broad rules such as `Bash(uvx *)` included, since an ask rule prompts even when an allow rule matches;
+- a missing `vetted-op-read` allow rule: each launcher (`uvx --from`, `uv run --project`) with the literal `~/.claude/magpie/vetted-ops` base, two rules;
+- an allowed form without its matching `sandbox.excludedCommands` entry, since such a call runs sandboxed and its `gh` fails silently;
+- a leftover allow rule or exclusion spelled with the resolved `$HOME/.claude/magpie/vetted-ops` base, which the agent-guard `vetted-ops-spelling` guard now refuses anyway (propose removing it);
+- any `permissions.ask` rule that matches a `vetted-op-read` command in either launcher form, broad rules such as `Bash(uvx *)` included, since an ask rule prompts even when an allow rule matches;
 - `permissions.blockReadsOutsideWorkingDirectories` on in any scope, under which every call prompts because the check cannot resolve the literal `~`;
 - a missing vetted-ops `Edit` deny rule (the second check), since those rules are what make the unprompted read safe.
 

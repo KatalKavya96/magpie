@@ -506,24 +506,29 @@ of its `gh` builder, and the skills keep calling the same operations:
 ```toml
 [tracker]
 platform = "local-files"                                  # github (default) | local-files | jira
-project  = "/abs/path/to/.apache-magpie/tools/local-tracker"
 root     = "/abs/path/to/the/repo/security/reports"       # the tracker folder
 
 # platform = "jira"
-# project             = "/abs/path/to/.apache-magpie/tools/jira"
 # jira_url            = "https://issues.example.org/jira"
 # jira_project        = "FOOSEC"
 # jira_security_level = "Security Team"
+# jira_issue_type     = "Bug"                             # default Bug
 # jira_deployment     = "server"                          # server | cloud
 ```
 
 The guarantees above carry over, because the translation lives in reviewed code
 ([`tracker_backends.py`](src/vetted_ops/tracker_backends.py)), not in the policy:
 
-- **The program is fixed.** The policy supplies data — the backend's tool
-  directory, which must be the `tools/local-tracker` or
-  `tools/jira` directory the platform names, and its pinned
-  target — never a command. The argv is `uv run --project <dir> <script>`
+- **The program and its code are fixed.** The backend runs from the tool
+  directory installed beside vetted-ops itself — `tools/local-tracker` or
+  `tools/jira` in a checkout, the same siblings inside the installed
+  `magpie-vetted-ops` plugin — never from a path a policy names. Under
+  `uvx --from` the module runs from a wheel in a cache the agent can write to,
+  so the backend is then taken from beside the protected
+  `~/.claude/magpie/vetted-ops` link instead. A policy can be
+  picked with `--config`, so a policy that could name code would let whoever
+  writes one run code through the allowlisted read entry point; a `project` key
+  is therefore refused. The argv is `uv run --project <that dir> <script>`
   followed by the target and the translated subcommand.
 - **The target is not addressable.** The tracker folder, or the Jira URL,
   project and security level, come from the policy, exactly as `[repos] tracker`
@@ -542,7 +547,7 @@ The guarantees above carry over, because the translation lives in reviewed code
 The full mapping, from the `gh` shape in the skills to the vetted operation to
 the backend subcommand, is in the contract's
 [skill-command table](https://github.com/apache/magpie/blob/main/tools/security-tracker/contract.md#from-skill-commands-to-vetted-operations).
-Six operations exist for it:
+Nine operations exist for it:
 
 | Operation | Kind | Parameters | Notes |
 |---|---|---|---|
@@ -550,12 +555,18 @@ Six operations exist for it:
 | `issue-reopen` | write | `number` | |
 | `issue-list-label` | read | `state label` | `issue-list` filtered by one configured label. |
 | `issue-search` | read | `query` | Plain words; a `:` is refused, so a `repo:` qualifier cannot re-target the search. |
-| `tracker-pending` | read | — | `local-files` only: uncommitted tracker changes. |
+| `issue-body` | read | `number` | Non-GitHub only: the body as markdown sections, for `generate-cve-json --stdin`. |
+| `issue-attach` | write | `number file attachment` | Non-GitHub only: attach a workspace file under a plain name (no path, no `..`). |
+| `tracker-doctor` | read | — | The backend's setup check; replaces the GitHub pre-flight (`gh api repos/<tracker>`, roster) on `local-files` and `jira`. |
+| `tracker-pending` | read | — | `local-files` only: uncommitted changes and unpushed commits. |
 | `tracker-publish` | write | `message` | `local-files` only: commit the tracker folder and push. Runs on `vetted-op-tracker`, outside the sandbox, because the push needs credentials. |
 
 `tracker-publish` is the one non-procedure operation `vetted-op-tracker` admits.
-On `github` and `jira` both `tracker-*` operations refuse: those writes are
-visible as soon as they return.
+On `github` every `tracker-*` operation refuses, and on `jira` `tracker-pending`
+and `tracker-publish` do: those writes are visible as soon as they return.
+On a non-GitHub tracker the `number` parameter of a tracker operation takes the
+backend's own IDs (`SEC-0012`, `FOOSEC-12`, `2024-007-xss`): letters, digits,
+`-` and `_` only, so an ID can never name a path.
 
 ## Wiring it into settings
 
@@ -632,8 +643,9 @@ root.
 
 **The read dispatcher must never prompt.**
 This is an imperative of the secure setup, not a tuning option: bulk skills call `vetted-op-read` from background gatherer agents, which cannot surface a prompt, so every prompt there is a silent denial and the sync returns partial results.
-Beyond the rules above, that takes the same two `allow` rules and the same two `vetted-op-read` exclusions with the resolved absolute `$HOME/.claude/magpie/vetted-ops` base (per machine: user scope or `settings.local.json`), no `ask` rule that matches a `vetted-op-read` command, and `permissions.blockReadsOutsideWorkingDirectories` off in every scope, since the read block cannot check the literal `~` these commands spell.
+Beyond the rules above, that takes no `ask` rule that matches a `vetted-op-read` command, and `permissions.blockReadsOutsideWorkingDirectories` off in every scope, since the read block cannot check the literal `~` these commands spell.
 The three `Edit` deny rules are required alongside: they are what makes the unprompted read safe.
+Every rule spells the base as the literal `~/.claude/magpie/vetted-ops`, and so must every call: the agent-guard [`vetted-ops-spelling`](https://github.com/apache/magpie/blob/main/tools/agent-guard/README.md#guards) guard refuses an expanded home path or a checkout path and names the `~` command instead.
 The setup skills install, verify and report drift on the whole shape; see [Read-only vetted ops never prompt](https://github.com/apache/magpie/blob/main/docs/setup/secure-agent-setup.md#read-only-vetted-ops-never-prompt).
 
 The dispatcher must live where the agent cannot rewrite it — otherwise an agent

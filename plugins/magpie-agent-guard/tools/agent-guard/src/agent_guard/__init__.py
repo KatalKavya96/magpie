@@ -924,6 +924,212 @@ def guard_empty_rebase(seg: Segment, cwd: str | None) -> str | None:
     return None
 
 
+# The dispatchers' entry points and the stable directory each must be launched
+# from. `sandbox.excludedCommands` and the `permissions.allow` rules name the
+# literal `~/.claude/magpie/<tool>` spelling, so only that spelling runs outside
+# the sandbox without a prompt (docs/setup/secure-agent-setup.md).
+VETTED_ENTRY_POINTS = {
+    "vetted-op": "vetted-ops",
+    "vetted-op-read": "vetted-ops",
+    "vetted-op-tracker": "vetted-ops",
+    "adversarial-review": "adversarial-review",
+}
+VETTED_STABLE_BASE = "~/.claude/magpie/"
+# `uv run` / `uvx` options that take a value, so the value is not mistaken for
+# the command they launch.
+_UV_VALUE_OPTIONS = frozenset(
+    {
+        "--project",
+        "--from",
+        "--directory",
+        "--with",
+        "--with-editable",
+        "--with-requirements",
+        "--group",
+        "--extra",
+        "--package",
+        "--python",
+        "-p",
+        "--env-file",
+        "--index",
+        "--default-index",
+        "--cache-dir",
+        "--config-file",
+    }
+)
+
+
+def _vetted_launch(argv: list[str]) -> tuple[str, str, str] | None:
+    """``(option, base, entry_point)`` for a ``uv run --project`` / ``uvx --from``
+    launch of a vetted dispatcher, or None for any other command."""
+    if not argv or argv[0] not in ("uv", "uvx"):
+        return None
+    # `uv` takes its options on either side of `run` (`uv --project X run …`
+    # is the same launch as `uv run --project X …`); `uvx` has no subcommand.
+    option, rest = ("--project", argv[1:]) if argv[0] == "uv" else ("--from", argv[1:])
+    needs_run = argv[0] == "uv"
+    base: str | None = None
+    i = 0
+    while i < len(rest):
+        tok = rest[i]
+        if tok == option:
+            base = rest[i + 1] if i + 1 < len(rest) else None
+            i += 2
+            continue
+        if tok.startswith(option + "="):
+            base = tok[len(option) + 1 :]
+            i += 1
+            continue
+        if tok in _UV_VALUE_OPTIONS:
+            i += 2
+            continue
+        if tok.startswith("-"):
+            i += 1
+            continue
+        if needs_run:
+            if tok != "run":
+                return None  # another uv subcommand
+            needs_run = False
+            i += 1
+            continue
+        break
+    if needs_run or base is None or i >= len(rest) or rest[i] not in VETTED_ENTRY_POINTS:
+        return None
+    return option, base, rest[i]
+
+
+def _account_home() -> str | None:
+    """The account's home from the password database, never from ``HOME``,
+    which an earlier command can reassign. None where there is none (Windows).
+    Spelled as the database spells it, unresolved: Codex's rewrite hook writes
+    that spelling, and ``_within`` resolves the roots it compares itself."""
+    try:
+        import pwd  # POSIX only; the engine also runs on Windows.
+
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except (ImportError, KeyError, OSError):
+        return None
+
+
+def _within(path: str, root: str) -> bool:
+    root = os.path.realpath(root)
+    return path == root or path.startswith(root.rstrip(os.sep) + os.sep)
+
+
+def _inside_checkout(base: str, cwd: str | None) -> bool:
+    """True when the absolute ``base`` lies in a git working tree: the one the
+    command runs from, or the one ``base`` itself sits in, whatever the cwd.
+    A dispatcher there is code the agent can edit. The account's own plugin
+    cache is exempt, even when the home directory is version-controlled; a
+    directory merely named like one elsewhere is not."""
+    target = os.path.realpath(base)
+    home = _account_home()
+    if home and _within(target, os.path.join(home, ".claude", "plugins", "cache")):
+        return False
+    top = _run(["git", "rev-parse", "--show-toplevel"], cwd=cwd)
+    if top and _within(target, top):
+        return True
+    probe = target
+    while probe and not os.path.isdir(probe):
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return False
+        probe = parent
+    top = _run(["git", "rev-parse", "--show-toplevel"], cwd=probe)
+    return top is not None and _within(target, top)
+
+
+_CODEX_HOOK_SCRIPT = "codex-expand-stable-path.py"
+
+
+def _codex_stable_roots() -> set[str]:
+    """The absolute vetted-ops roots Codex's rewrite hook may substitute for `~`.
+
+    The hook rewrites to the root it was registered with: `--stable-path` in
+    the Codex configuration (`vetted-ops-codex-rules --hook --tool-root …`),
+    else the account's home. Only those exact roots are let through; a path
+    the agent could build itself is not.
+    """
+    home = _account_home()
+    if home is None:
+        return set()
+    roots = {f"{home.rstrip('/')}/{VETTED_STABLE_BASE[2:]}vetted-ops"}
+    config = Path(os.environ.get("CODEX_HOME") or f"{home}/.codex") / "config.toml"
+    try:
+        import tomllib  # 3.11+, the engine's floor.
+
+        data = tomllib.loads(config.read_text(encoding="utf-8"))
+    except (ImportError, OSError, ValueError):
+        return roots
+    for command in _toml_commands(data):
+        if _CODEX_HOOK_SCRIPT not in command:
+            continue
+        try:
+            argv = shlex.split(command)
+        except ValueError:
+            continue
+        if "--stable-path" in argv[:-1]:
+            root = argv[argv.index("--stable-path") + 1].rstrip("/")
+            if os.path.isabs(root):
+                roots.add(root)
+    return roots
+
+
+def _toml_commands(node: object) -> list[str]:
+    """Every string ``command`` value anywhere in parsed TOML."""
+    found: list[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "command" and isinstance(value, str):
+                found.append(value)
+            else:
+                found += _toml_commands(value)
+    elif isinstance(node, list):
+        for item in node:
+            found += _toml_commands(item)
+    return found
+
+
+def guard_vetted_ops_spelling(seg: Segment, cwd: str | None = None, harness: str | None = None) -> str | None:
+    launch = _vetted_launch(seg.argv)
+    if launch is None:
+        return None
+    option, base, entry = launch
+    tool = VETTED_ENTRY_POINTS[entry]
+    stable = VETTED_STABLE_BASE + tool
+    base = base.rstrip("/")
+    if base == stable:
+        return None
+    if harness == "codex" and entry == "vetted-op-read" and base in _codex_stable_roots():
+        # Codex's execpolicy cannot match `~`, so its own hook rewrites a lone
+        # read to the absolute root it was registered with
+        # (tools/vetted-ops/hooks/codex-expand-stable-path.py). Only reads are
+        # rewritten, and only to that exact root.
+        return None
+    # What is refused: the stable path spelled any other way (expanded home,
+    # `$HOME`, the wrong dispatcher's link), a relative path, and an absolute
+    # path inside the working tree: both are a checkout the agent can edit.
+    # Another absolute or `~` path is a harness's own installed plugin
+    # directory (docs: tools/adversarial-review/README.md) and is left to that
+    # harness's rules.
+    stable_elsewhere = "/.claude/magpie/" in base or base.startswith(VETTED_STABLE_BASE)
+    relative = not base.startswith(("/", "~"))
+    checkout = base.startswith("/") and not stable_elsewhere and _inside_checkout(base, cwd)
+    if not (stable_elsewhere or relative or checkout or base.startswith("$")):
+        return None
+    if seg.override("MAGPIE_ALLOW_VETTED_PATH"):
+        return None
+    return (
+        f"agent-guard[vetted-ops-spelling]: `{entry}` must be launched as "
+        f"`{seg.argv[0]} {'run ' if seg.argv[0] == 'uv' else ''}{option} {stable} {entry} …`, "
+        f"spelled with the literal `~`, not `{base}`. The sandbox exclusion and the "
+        "permission rules name only that spelling: an expanded home path runs inside the "
+        "sandbox, where gh cannot verify TLS, and a checkout path runs code the agent can "
+        "edit, which must never be excluded from the sandbox. Re-run it with the `~` form. "
+        "Override (developing the dispatcher itself): MAGPIE_ALLOW_VETTED_PATH=1."
+    )
+
+
 # The framework's bundled guards — the universal `git` hygiene rules that apply
 # to every project regardless of which skills are installed. Domain-specific
 # guards are owned and contributed by the skills that need them (e.g. the
@@ -1286,12 +1492,23 @@ def discover_guards() -> list[tuple[Callable[[GuardContext], str | None], set[st
 # --------------------------------------------------------------------------- #
 
 
-def dispatch(command: str, cwd: str | None = None) -> str | None:
-    """Return a deny reason for ``command``, or None to allow it."""
+def dispatch(command: str, cwd: str | None = None, harness: str | None = None) -> str | None:
+    """Return a deny reason for ``command``, or None to allow it.
+
+    ``harness`` names the calling adapter only where a rule must differ by
+    harness (the Codex stable-path rewrite, see guard_vetted_ops_spelling).
+    """
     if not command:
         return None
     contributed: list[tuple[Callable[[GuardContext], str | None], set[str] | None]] | None = None
     for seg in split_segments(command):
+        if seg.argv and seg.argv[0] in ("uv", "uvx"):
+            # Checked here rather than as a guarded head: a vetted launch is the
+            # only `uv` rule, and contributed guards stay on `gh` / `git`.
+            reason = guard_vetted_ops_spelling(seg, cwd, harness)
+            if reason:
+                return reason
+            continue
         if not seg.argv or seg.argv[0] not in GUARDED_HEADS:
             continue  # fast path — non-guarded command family
         # Bundled guards (trusted, in-process; each self-filters its command).
@@ -1333,7 +1550,7 @@ def _emit_deny(reason: str) -> None:
     sys.stdout.write("\n")
 
 
-def _claude_event(event: object) -> int:
+def _claude_event(event: object, harness: str | None = None) -> int:
     """Handle one parsed Claude Code ``PreToolUse`` event."""
     if not isinstance(event, dict) or event.get("tool_name") != "Bash":
         return ALLOW_EXIT
@@ -1342,7 +1559,7 @@ def _claude_event(event: object) -> int:
         return ALLOW_EXIT
     command = str(tool_input.get("command", ""))
     cwd = event.get("cwd")
-    reason = dispatch(command, cwd if isinstance(cwd, str) else None)
+    reason = dispatch(command, cwd if isinstance(cwd, str) else None, harness)
     if reason:
         _emit_deny(reason)
     return ALLOW_EXIT
@@ -1374,7 +1591,7 @@ def codex_main() -> int:
     tool_input = event.get("tool_input")
     if not isinstance(tool_input, dict) or not isinstance(tool_input.get("command"), str):
         return ALLOW_EXIT
-    return _claude_event(event)
+    return _claude_event(event, "codex")
 
 
 # Exit codes for the harness-neutral entry point (``--opencode`` and any future
