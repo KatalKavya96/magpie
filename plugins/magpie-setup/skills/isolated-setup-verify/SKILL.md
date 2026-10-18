@@ -18,7 +18,7 @@ when_to_use: >-
 capability: capability:platform
 surface_hash: sha256:ce33cb9437d44992
 license: Apache-2.0
-measured_tokens: 6217
+measured_tokens: 6614
 ---
 
 <!-- Placeholder convention (see AGENTS.md#placeholder-convention-used-in-skill-files):
@@ -92,7 +92,6 @@ The canonical list lives in
 Walk each in order:
 
 1. Project `.claude/settings.json` shape: `sandbox.enabled: true`, `permissions.deny`, `permissions.ask`, `sandbox.network.allowedDomains`, and the `sandbox.filesystem` allowlist (`allowRead`/`allowWrite`).
-   In the Magpie framework checkout (it carries `tools/agent-isolation/claude-settings.template.json`) the file is not committed: a missing one is ✗, with the remedy to put the template in place ([CONTRIBUTING.md → Agent settings](../../../../CONTRIBUTING.md#agent-settings), or step T of `setup-isolated-setup-install`); one that lacks a block the template has is ⚠, naming the block.
 2. User-scope `~/.claude/settings.json` wiring: `PreToolUse` `Bash` matcher → `sandbox-bypass-warn.sh`, `PostToolUse` `Bash` matcher → `sandbox-error-hint.sh`, `statusLine` → `sandbox-status-line.sh` (or a custom statusline script that embeds the framework's prefix logic, the doc-allowed variant; report ⚠).
    A missing `PostToolUse` entry for `sandbox-error-hint.sh` reports ⚠ (not ✗).
    The hook is a discoverability aid for the failure modes in [`docs/setup/sandbox-troubleshooting.md`](../../../../docs/setup/sandbox-troubleshooting.md); without it nothing breaks, but those failures show the raw error without the `[sandbox-hint]` annotation.
@@ -157,7 +156,7 @@ Walk each in order:
     Four sub-checks:
     [`conditional-checks.md`](conditional-checks.md#check-10--hardware-key-touch-overlay-and-the-signing-key).
 
-11. **`gh` runs outside the sandbox.** `sandbox.excludedCommands` must contain `"gh *"` in the project `.claude/settings.json` or the user-scope `~/.claude/settings.json`.
+11. **`gh` runs outside the sandbox.** `sandbox.excludedCommands` must contain `"gh *"` in any layer Claude Code merges: the project `.claude/settings.json`, the project-local `.claude/settings.local.json` (where the framework checkout's template puts it), or the user-scope `~/.claude/settings.json`.
     On macOS a sandboxed `gh` cannot verify TLS or read the keychain (`x509: OSStatus -26276` / `HTTP 401`), so without the exclusion every skill that talks to GitHub fails; the "`gh` is sandbox-bypassed" note under `credentials` relies on it.
     Missing on macOS is ✗; missing on Linux is ⚠ (a sandboxed `gh` may work there, but the reference config expects the exclusion).
 
@@ -187,11 +186,12 @@ Walk each in order:
     [`conditional-checks.md`](conditional-checks.md#check-14--adversarial-review-exclusion-if-installed).
 
 15. **Working directories under the read block.** Only when `permissions.blockReadsOutsideWorkingDirectories` is `true` in any scope (user, project, project-local or managed); otherwise **n/a**.
-    Resolve `$HOME` and `id -u`, then confirm the current worktree's project-local `.claude/settings.local.json` `permissions.additionalDirectories` contains both `$HOME/.claude/magpie` and `/tmp/claude-<uid>` as literal absolute paths.
+    Resolve `id -u`, then confirm the current worktree's project-local `.claude/settings.local.json` `permissions.additionalDirectories` contains `/tmp/claude-<uid>` as a literal absolute path.
+    `$HOME/.claude/magpie` is deliberately not one of them; check 16f fails on it.
     A missing path is ⚠, not ✗: nothing is exposed, but every read under it prompts, and a bulk sync multiplies that by its gatherer agents.
     An entry with a glob (`/tmp/claude-*`) is listed as a working directory but never matched; report the path it was meant to cover as missing (⚠) and say plainly that the entry does nothing.
-    The same paths in the committed project `.claude/settings.json`, or in a user-scope `~/.claude/settings.json` synced across machines, are ⚠: they are per-host and belong in `settings.local.json`.
-    [Why these two directories](../../../../docs/setup/secure-agent-setup.md#working-directories-under-the-read-outside-working-directories-block).
+    The same path in the committed project `.claude/settings.json`, or in a user-scope `~/.claude/settings.json` synced across machines, is ⚠: it is per-host and belongs in `settings.local.json`.
+    [Why this directory](../../../../docs/setup/secure-agent-setup.md#working-directories-under-the-read-outside-working-directories-block).
     Where check 16 applies, the read block being on at all is already ✗ there; these entries do not fix it.
 
 16. **Read-only vetted ops never prompt.** An imperative, not a preference: the read dispatcher MUST NOT prompt in any form, because background gatherer agents cannot surface a prompt and each one becomes a silent denial.
@@ -205,18 +205,30 @@ Walk each in order:
       An ask rule prompts even when an allow rule matches.
       Name the file that carries it.
     - **16c — read block off.** `permissions.blockReadsOutsideWorkingDirectories` is `false` or absent in every scope.
-      With it on, every call prompts: the check cannot resolve the literal `~` the commands spell, and neither an `allow` rule nor an `additionalDirectories` entry overrides it.
+      With it on, every call prompts: the check cannot resolve the literal `~` the commands spell, and no `allow` rule overrides it. Listing the checkout as a working directory is not a workaround: 16f fails on it.
     - **16d — tamper protection.** All three vetted-ops `Edit` deny rules from check 9 are present.
       This is what makes the unprompted read safe, so a missing one fails here as well as in check 9.
     - **16e — an exclusion for every allowed form.** `sandbox.excludedCommands` carries `<launcher> ~/.claude/magpie/vetted-ops vetted-op-read *` for both launchers of 16a.
       An allowed form without its exclusion is approved without a prompt but runs inside the sandbox, where its `gh` cannot verify TLS: a silent failure, as with a prompt.
 
+    - **16f — the checkout is not a working directory.** No `permissions.additionalDirectories` entry in any scope overlaps `$HOME/.claude/magpie`: that path, its `~` spelling, anything inside it (such as `~/.claude/magpie/vetted-ops`, which the read-block prompt names), or a parent such as `$HOME/.claude` or `$HOME`.
+      The sandbox makes every working directory writable to sandboxed Bash whatever `allowWrite` says, and the 16e exclusions run that checkout's code outside the sandbox, so a covering entry lets sandboxed code change what runs outside it.
+      Older versions of `sandbox-add-project-root.sh` added the entry; re-running the updated script (`--all-worktrees`) removes `$HOME/.claude/magpie` and `~/.claude/magpie` from project-local files. A parent directory, or an entry in user or committed project scope, needs a hand edit; [install Step V.1](../isolated-setup-install/SKILL.md#step-v1--read-only-vetted-ops-must-never-prompt) item 7 proposes it.
     [The required shape and why](../../../../docs/setup/secure-agent-setup.md#read-only-vetted-ops-never-prompt).
 
 17. **roborev exclusion, if installed.** Optional (step B of `setup-isolated-setup-install`).
     **n/a** when `command -v roborev` finds nothing.
     Otherwise:
     [`conditional-checks.md`](conditional-checks.md#check-17--roborev-exclusion-if-installed).
+
+18. **Local agent settings.** Every entry the reconciliation in
+    [`setup upgrade`](../setup/upgrade.md#reconcile-the-local-agent-settings)
+    would add is present in `.claude/settings.local.json`: the MCP tools of
+    families installed here but not adopted and, only in the Magpie
+    framework checkout itself, the template entries. A missing entry is ⚠: nothing is exposed, but the
+    matching command or tool prompts. A local `deny` or `ask` rule is fine;
+    a local value that overrides one the committed file sets (such as
+    `sandbox.enabled`) is ✗.
 
 ## After the report
 
@@ -234,11 +246,12 @@ If anything is ✗ or ⚠, suggest the matching follow-up skill without invoking
 - ✗ on check 10c → the one-file `allowRead` widening in the troubleshooting entry, applied by the user (never from this skill), then re-verify.
 - ⚠ on check 10d → the symlink and the two `git config --global` lines in [`docs/setup/secure-agent-setup.md` → From your own terminal](../../../../docs/setup/secure-agent-setup.md#from-your-own-terminal--gits-program-config), run by the user (global git config is theirs); `setup-isolated-setup-install` Step K.3 walks them through it.
   ✗ on 10d (wrapper named but unreadable in the sandbox) → the two-file `allowRead` widening in [`docs/setup/sandbox-troubleshooting.md` → Signed commit fails with "cannot exec" of the touch-overlay wrapper](../../../../docs/setup/sandbox-troubleshooting.md#signed-commit-fails-with-cannot-exec-of-the-touch-overlay-wrapper), applied by the user, then re-verify.
-- ✗ on check 11 (`"gh *"` missing from `sandbox.excludedCommands`, or a catch-all `Bash(gh *)` in `permissions.ask`) → the operator edits settings themselves (settings.json changes are never applied from a skill): add the exclusion, or replace the catch-all with the explicit write-subcommand list from the reference `.claude/settings.json`; then re-run `setup-isolated-setup-verify`.
+- ✗ on check 11 (`"gh *"` missing from `sandbox.excludedCommands`, or a catch-all `Bash(gh *)` in `permissions.ask`) → the operator edits settings themselves (settings.json changes are never applied from a skill): add the exclusion (in the framework checkout, by reconciling the local settings as in check 18), or replace the catch-all with the explicit write-subcommand list from the reference `.claude/settings.json`; then re-run `setup-isolated-setup-verify`.
 - ✗ on check 12a / 12b (hooks or the hook script missing) → `setup-isolated-setup-install` Step L.
 - ✗ on check 12c (project `env` or `allowUnixSockets` half missing) → `setup-isolated-setup-install` Step L, to propose the missing block as a settings diff for the operator to approve.
 - ✗ on check 12d (a raw daemon socket in `allowUnixSockets`) → the operator removes that entry themselves (settings.json changes are never applied from a skill) and, if they need the daemon reachable, follows Step L instead; then re-run `setup-isolated-setup-verify`.
 - ⚠ on check 17a, 17b or 17c, or ✗ on 17b, 17c, 17d or 17e → the operator edits settings themselves (settings.json changes are never applied from a skill): copy the rules from step B of `setup-isolated-setup-install`, remove every `roborev` `allow`, and for 17c remove any `allowWrite` on `~/.roborev/`, then on macOS finish step B.2 (the `unix://` `server_addr` and its `allowUnixSockets` entry) or remove its `allowRead`, and on Linux remove the `allowRead` and run `roborev review` explicitly instead; then re-run `setup-isolated-setup-verify`. ⚠ on 17f → show the operator `.roborev.toml` and its history and leave the decision to them. ✗ on 17f (roborev's hook in a shared whole-user hooks directory) → name the hook; the operator restores the Step P dispatcher there (`setup-isolated-setup-install` Step P) and moves roborev's hook into the repository's own `$(git rev-parse --git-common-dir)/hooks/post-commit`, never with `--force`; then re-run `setup-isolated-setup-verify`. ⚠ on 17g → name the hook or MCP entry and what it bypasses; removing it is the operator's call.
+- ⚠ or ✗ on check 18 → `setup upgrade`, whose local-settings reconciliation stages the merged `.claude/settings.local.json` for the operator to copy; a ✗ override is the operator's to remove.
 - ⚠ on check 15 (a working directory missing, or covered only by a glob) → re-run `~/.claude/scripts/sandbox-add-project-root.sh --all-worktrees`, which writes the resolved paths to each worktree's `settings.local.json` (or re-run `setup-isolated-setup-install` if the helper is not installed); `/add-dir <path>` covers the current session meanwhile.
 - ✗ on check 16 → `setup-isolated-setup-install` Step V.1, which proposes the exact settings edit for each failing sub-check; the operator applies it (never this skill), then re-run `setup-isolated-setup-verify`.
   Until check 16 passes, do not run a bulk skill that fans out into background gatherer agents: their reads fail silently.

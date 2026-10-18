@@ -15,9 +15,9 @@ when_to_use: >-
   If it is already installed, use `setup-isolated-setup-verify` to check
   it or `setup-isolated-setup-update` to refresh it.
 capability: capability:platform
-surface_hash: sha256:8a931772d33ac93f
+surface_hash: sha256:fe5f2a0f66586cb2
 license: Apache-2.0
-measured_tokens: 6894
+measured_tokens: 7089
 ---
 
 <!-- Placeholder convention (see AGENTS.md#placeholder-convention-used-in-skill-files):
@@ -152,9 +152,9 @@ Before walking any install step, confirm with the user:
    distro shortcut.
 2. **Framework checkout path.** The path to the user's local
    `magpie` clone. Required to read
-   `tools/agent-isolation/pinned-versions.toml`, the settings
-   template `tools/agent-isolation/claude-settings.template.json`,
-   and the `tools/agent-isolation/*.sh` scripts. If the user does not
+   `tools/agent-isolation/pinned-versions.toml`,
+   `.claude/settings.json`, and the
+   `tools/agent-isolation/*.sh` scripts. If the user does not
    have a clone, walk them through `git clone` first.
 3. **Fresh install or re-install.** For a re-install on a partial
    existing state, the skill must enumerate the existing wiring
@@ -199,26 +199,6 @@ version (`command claude --version`, which skips an
 **hard-fail** — stop the install, tell the operator to upgrade to
 `@latest`, and have them re-run. The secure setup must not be stood up
 on a below-floor runtime.
-
-### Step T — The framework checkout's own agent settings
-
-Only when the project being set up **is the Magpie framework checkout**
-(it carries `tools/agent-isolation/claude-settings.template.json` and
-`skills/setup/`). That repository does not commit `.claude/settings.json`;
-each contributor puts the template in place
-([CONTRIBUTING.md → Agent settings](../../../../CONTRIBUTING.md#agent-settings)).
-
-- **No `.claude/settings.json`** — propose copying the template there, and
-  copy it on the user's yes.
-- **One already exists** — show the difference from the template and
-  propose merging the template's blocks in; never overwrite it. Personal
-  additions belong in `.claude/settings.local.json`.
-
-`.claude/settings.json` is the agent's own configuration and the sandbox
-write-denies it, so the copy or merge is the user's to run (or to approve
-outside the sandbox); say so rather than retrying. In any other project
-this step does not apply: an adopted project commits its own
-`.claude/settings.json` floor.
 
 ### Step P — Project-root coverage in the sandbox allowlists
 
@@ -359,8 +339,9 @@ operator applies it; never write a settings file on your own.
 3. **Read block off.** If `permissions.blockReadsOutsideWorkingDirectories`
    is `true` in any scope, propose removing it (or setting it `false`). With
    it on, every call prompts, because the check cannot resolve the literal
-   `~` the commands spell, and neither an `allow` rule nor an
-   `additionalDirectories` entry overrides it. Say plainly that Bash stays
+   `~` the commands spell, and no `allow` rule overrides it. Never offer an
+   `additionalDirectories` entry or `/add-dir` for the checkout instead (see
+   item 7). Say plainly that Bash stays
    sandboxed and the credential `Read` denies still apply. If managed
    settings force it on, the imperative cannot be met on this machine:
    tell the operator, and that bulk skills must not run their gatherer
@@ -375,6 +356,15 @@ operator applies it; never write a settings file on your own.
 6. **The spelling guard.** The agent-guard plugin MUST be installed, so its
    `vetted-ops-spelling` guard turns an expanded spelling into a refusal that
    names the `~` command, instead of a sandboxed call that fails silently.
+7. **The checkout is not a working directory.** No
+   `permissions.additionalDirectories` entry in any scope may cover
+   `$HOME/.claude/magpie` (that path, its `~` spelling, anything inside it
+   such as `~/.claude/magpie/vetted-ops`, or a parent such as
+   `$HOME/.claude` or `$HOME`). A working directory is writable to sandboxed
+   Bash, and item 5's exclusions run that checkout outside the sandbox.
+   `sandbox-add-project-root.sh` removes the `~/.claude/magpie` entry it once
+   added from each worktree's `settings.local.json`; propose the hand edit for
+   any other covering entry, naming the file.
 
 This covers the read dispatcher only. `vetted-op-tracker` and `vetted-op`
 stay in `ask`, never in `allow`, and `vetted-op` is never excluded.
@@ -438,14 +428,20 @@ prompt. They remain useful for the agent's own reads of the scratch root
 where the block is on for other reasons.
 
 Nothing extra to write: the `sandbox-add-project-root.sh` run in Step P also
-adds `$HOME/.claude/magpie` and `/tmp/claude-<uid>`, resolved, to
-`permissions.additionalDirectories` of each worktree's project-local
-`settings.local.json`. Under `permissions.blockReadsOutsideWorkingDirectories`
-the skills read both on every run; without the entries each read prompts, and
-a bulk sync multiplies that by its gatherer agents.
+adds `/tmp/claude-<uid>`, resolved, to `permissions.additionalDirectories` of
+each worktree's project-local `settings.local.json`. Under
+`permissions.blockReadsOutsideWorkingDirectories` the skills read it on every
+run; without the entry each read prompts, and a bulk sync multiplies that by
+its gatherer agents. The script also removes `$HOME/.claude/magpie` where an
+earlier version added it.
 
 After Step P, show the operator the resulting `additionalDirectories` list and
-check two things:
+check three things:
+
+- **Never `~/.claude/magpie`.** If any scope lists `$HOME/.claude/magpie` or a
+  parent of it, propose removing it. A working directory is writable to
+  sandboxed Bash, and the vetted-ops commands run from that checkout outside
+  the sandbox. `/add-dir` has the same effect for a session.
 
 - **No glob and no `~`.** If the operator already has an entry such as
   `/tmp/claude-*` in any scope, say it does nothing: the setting matches
@@ -453,10 +449,23 @@ check two things:
 - **Nothing per-host in a synced or committed file.** If the operator put the
   paths in a user-scope `~/.claude/settings.json` that is synced across
   machines, or in the committed project settings, suggest moving them: they
-  name this host's home directory and uid.
+  name this host's uid.
 
 Rationale and the rules in full:
 [`docs/setup/secure-agent-setup.md` → Working directories under the read-outside-working-directories block](../../../../docs/setup/secure-agent-setup.md#working-directories-under-the-read-outside-working-directories-block).
+
+### Step T — Local agent settings
+
+The committed `.claude/settings.json` is only the shared floor; the rest
+of a working setup is personal and goes in `.claude/settings.local.json`.
+Build and hand over that file exactly as
+[`setup upgrade` → Reconcile the local agent settings](../setup/upgrade.md#reconcile-the-local-agent-settings)
+does: the MCP tools for families installed here but not adopted by the
+project and, **only when this project is the Magpie framework checkout**,
+its template (`tools/agent-isolation/claude-settings.local.template.json`).
+Never stage that template into another project: it would widen that
+project's sandbox beyond what its maintainers configured. An agent
+cannot write that file, so stage it and give the user the copy command.
 
 ### Steps K, L, M and B — optional extras
 

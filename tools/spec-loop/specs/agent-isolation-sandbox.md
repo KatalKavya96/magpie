@@ -11,9 +11,7 @@ source: >
   environment wrapper", "Layered sandbox by default", "Pinned, reviewed,
   signed dependencies"). Implemented in tools/agent-isolation/,
   tools/agent-guard/, tools/permission-audit/, tools/egress-gateway/,
-  the setup-isolated-setup-* skills, and tools/agent-isolation/claude-settings.template.json
-  (the framework's agent settings, not committed as .claude/settings.json;
-  contributors copy the template there).
+  the setup-isolated-setup-* skills, and .claude/settings.json.
 acceptance:
   - The reference setup uses an OS-level sandbox with default-deny
     filesystem reads and network egress; runtime-specific exceptions
@@ -195,21 +193,27 @@ existing sandbox grants can widen the baseline. See `docs/adapters/gemini.md`.
   local file is where they take effect. It never adds the credential
   paths the committed list also names; `--no-tool-paths` limits it to
   the project root. Checked by `setup-isolated-setup-verify` check 8.
-  It also adds the two directories the skills read on every run,
-  `$HOME/.claude/magpie` (the fixed vetted-ops path) and the scratch root
-  `/tmp/claude-<uid>`, to `permissions.additionalDirectories` of the same
-  file, resolved to literal absolute paths, because with
+  It also adds the scratch root `/tmp/claude-<uid>`, which the skills
+  read on every run, to `permissions.additionalDirectories` of the same
+  file, resolved to a literal absolute path, because with
   `permissions.blockReadsOutsideWorkingDirectories` on every read outside
   a working directory asks and a glob such as `/tmp/claude-*` is listed
-  but never matched (#1418). They name one host's home directory and uid,
-  so they stay per host in the gitignored local file rather than in a
-  synced user-scope settings file; `--no-working-dirs` skips them.
-  Install proposes them (Step W), verify check 15 and doctor probe 9
-  report them, and update treats their absence as drift.
-  They do not stop the prompt on a vetted-ops command, which spells `~`
-  literally and so cannot be checked against the read block; where
-  vetted-ops is used, install Step V.1 requires the read block off
-  instead (#1640; see [`vetted-command-surface.md`](vetted-command-surface.md)).
+  but never matched (#1418). It names one host's uid, so it stays per
+  host in the gitignored local file rather than in a synced user-scope
+  settings file; `--no-working-dirs` skips it. Install proposes it
+  (Step W), verify check 15 and doctor probe 9 report it, and update
+  treats its absence as drift.
+  `$HOME/.claude/magpie` (the fixed vetted-ops path) is deliberately not
+  a working directory, and the helper removes it where an earlier version
+  added it: the sandbox makes every working directory writable to
+  sandboxed Bash, and the vetted-ops exclusions run that checkout's code
+  outside the sandbox. sandbox-lint counts working directories as
+  writable and fails on one covering the checkout; verify check 16f,
+  doctor probe 9 (✗) and update report it. Reads of the checkout keep
+  prompting under the read block, which the vetted-ops commands need off
+  anyway: they spell `~` literally, which the read block cannot check, so
+  install Step V.1 requires it off where vetted-ops is used (#1640; see
+  [`vetted-command-surface.md`](vetted-command-surface.md)).
   Capability: `substrate:sandbox`.
 - Whole-user git hooks — the install skill's Step P.3 alternative to
   per-project scope: global `core.hooksPath` pointing at
@@ -233,14 +237,15 @@ existing sandbox grants can widen the baseline. See `docs/adapters/gemini.md`.
   socket is opened. Defence-in-depth per RFC-AI-0003: even a
   prompt-injection reaching for an arbitrary endpoint is blocked at the
   network layer. Capability: `substrate:sandbox`.
-- `tools/agent-isolation/claude-settings.template.json` (each contributor's
-  `.claude/settings.json`) — the `sandbox` block (filesystem
-  allow/deny, network `allowedDomains`, `excludedCommands`) and
-  `permissions` (`deny` / `ask`).
-  `.claude/settings.json` itself is gitignored, and the `sandbox-lint`
-  workflow also runs when that path changes and fails while it is tracked,
-  so a force-added copy that Claude Code would load for every checkout is
-  refused before merge (#1675).
+- `.claude/settings.json` — the committed floor: the `sandbox` block
+  (filesystem allow/deny, the core network `allowedDomains`, the vetted-ops
+  `excludedCommands`) and `permissions` (every `deny` / `ask`, the
+  `vetted-op-read` pair and the adopted families' MCP tools).
+- `tools/agent-isolation/claude-settings.local.template.json` — the rest of
+  the framework checkout's settings (the `gh` read allows, the remaining
+  exclusions, family-specific domains, personal tool paths), reconciled into
+  each contributor's `.claude/settings.local.json`. `sandbox-lint` lints the
+  two merged and keeps every `deny` / `ask` in the floor.
 - `.gemini/settings.json` and `.gemini/policies/magpie.toml` — Magpie's Gemini profile: tool-sandboxing and an explicitly loaded User-tier approval policy.
   Scoped shell reads are allowed; other shell calls, native edits, and MCP calls ask; listed commands and credential paths deny.
   Credential-path denies name the canonical `grep_search`; the native probe verifies its `search_file_content` alias, canonical policy names, and search/multi-file/web/resource argument schemas against the loaded runtime.
@@ -346,7 +351,9 @@ The reference model is four layers, layered:
    sandbox, so the executed code must not be writable by the thing
    being sandboxed. The non-`gh` entries above therefore address code
    outside the repository — the plugin cache, `~/.claude/magpie/` and
-   `~/.claude/scripts/`, none inside any `allowWrite` root — with
+   `~/.claude/scripts/`, none inside any `allowWrite` root or working
+   directory (`permissions.additionalDirectories`, which the sandbox
+   also makes writable) — with
    `permissions.deny` `Edit(…)` rules over the same paths. An in-repo path cannot carry
    that guarantee: without a deny the agent rewrites what runs
    unsandboxed, and a deny only stops the agent's editing tools while
@@ -470,7 +477,7 @@ uv run --project tools/agent-isolation --group dev pytest
 uv run --directory tools/agent-guard --group dev pytest
 uv run --project tools/permission-audit --group dev pytest
 uv run --project tools/egress-gateway --group dev pytest
-python3 -c "import json,sys; s=json.load(open('tools/agent-isolation/claude-settings.template.json')); \
+python3 -c "import json,sys; s=json.load(open('.claude/settings.json')); \
   ask=s['permissions']['ask']; \
   sys.exit(0 if any(a.startswith('Bash(git push') for a in ask) \
     and 'Bash(gh pr merge *)' in ask and 'Bash(gh *)' not in ask \
