@@ -4794,9 +4794,10 @@ def test_normalize_pull_request_jira_issues() -> None:
         {
             "pull_request_id": "7",
             "values": [
-                {"key": "MAGPIE-101"},
+                {"key": " magpie-101 "},
                 {"issueKey": "MAGPIE-102"},
                 {"key": "MAGPIE-101"},
+                {"issueKey": " magpie-102 "},
                 {},
             ],
         },

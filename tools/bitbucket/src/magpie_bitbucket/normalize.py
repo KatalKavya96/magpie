@@ -260,7 +260,8 @@ def pull_request_jira_issues(
         if not isinstance(item, dict):
             continue
 
-        key = _string(item.get("key") or item.get("issueKey"))
+        raw_key = _string(item.get("key") or item.get("issueKey"))
+        key = raw_key.strip().upper() if raw_key else None
 
         if key and key not in issue_keys:
             issue_keys.append(key)
