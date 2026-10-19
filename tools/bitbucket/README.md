@@ -45,11 +45,13 @@ contract and must not be advertised as complete/selectable backends.
 
 Repository metadata reads are currently bridge context for Bitbucket
 pull-request workflows, not a complete `contract:source-control`
-backend. No `contract:tracker` operations are currently implemented:
+backend. No native issue operations are implemented:
 native Bitbucket Cloud issue operations are unavailable after Atlassian's
 2026-08-20 removal, and Data Center native issue operations are also
 unsupported; use the Jira bridge (`tools/jira`).
-#606 remains open for linked Jira tracker coverage and the remaining
+On Data Center, `pr jira-issues <id>` lists the Jira keys linked to a
+pull request's commits as the handoff to that bridge.
+#606 remains open for broader linked Jira coverage and the remaining
 Bitbucket workflow gaps, including broader repository permissions and
 fuller Pipelines run/log/retry coverage.
 

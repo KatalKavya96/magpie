@@ -4769,6 +4769,45 @@ def test_datacenter_get_pull_request_jira_issues(
     }
 
 
+def _jira_issues_with_body(mock_build_opener: MagicMock, body: str) -> dict[str, Any]:
+    response = make_mock_text_response(body, content_type="application/json")
+    opener = MagicMock()
+    opener.open.return_value = MagicMock(
+        __enter__=MagicMock(return_value=response),
+        __exit__=MagicMock(return_value=None),
+    )
+    mock_build_opener.return_value = opener
+    return datacenter.get_pull_request_jira_issues(load_config(), "7")
+
+
+@pytest.mark.parametrize(
+    ("body", "match"),
+    [
+        ("<html><body>Log in</body></html>", "Failed to parse Jira integration JSON"),
+        ('{"key": "MAGPIE-101"}', "Expected JSON array"),
+    ],
+)
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_datacenter_get_pull_request_jira_issues_fails_closed_on_unexpected_body(
+    mock_build_opener: MagicMock,
+    datacenter_env: None,
+    body: str,
+    match: str,
+) -> None:
+    with pytest.raises(BitbucketError, match=match):
+        _jira_issues_with_body(mock_build_opener, body)
+
+
+@patch("magpie_bitbucket.client.urllib.request.build_opener")
+def test_datacenter_get_pull_request_jira_issues_drops_non_object_items(
+    mock_build_opener: MagicMock,
+    datacenter_env: None,
+) -> None:
+    result = _jira_issues_with_body(mock_build_opener, json.dumps([{"key": "MAGPIE-101"}, "junk", 3, None]))
+
+    assert result["values"] == [{"key": "MAGPIE-101"}]
+
+
 @patch("magpie_bitbucket.client.urllib.request.build_opener")
 def test_cloud_get_pull_request_jira_issues_fails_without_request(
     mock_build_opener: MagicMock,

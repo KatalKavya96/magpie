@@ -194,6 +194,8 @@ def get_pull_request_jira_issues(
 
     url = f"{_jira_api_base(config)}/projects/{project_key}/repos/{repo_slug}/pull-requests/{pr_id}/issues"
 
+    # This endpoint answers with a JSON array, which get_json rejects (it
+    # requires an object), so the body is read as text and parsed here.
     response = get_text(
         url,
         config,
