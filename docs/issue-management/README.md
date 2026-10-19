@@ -70,8 +70,6 @@ read-only reporting:
 
 ## Install & first runs
 
-New to issue management? See the [Issue Management welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/issue.md) for the workflow, configuration, and first requests.
-
 Install just this family — one plugin, 8 skills. General-issue lifecycle: triage, reproduction, dedup, backlog.
 
 Once you have [added the marketplace](../setup/marketplace-install.md):
@@ -83,6 +81,12 @@ Once you have [added the marketplace](../setup/marketplace-install.md):
 New to Magpie? The [quick start](../quick-start.md) walks the whole path in
 one place — install, the first `/magpie-setup:setup` run, and a recording of it
 happening — plus the other agents and the secure-isolation setup to run next.
+
+The first issue skill you run opens with a one-minute
+[welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/issue.md):
+the typical flow, what needs configuring, what to ask it, and how to make it yours.
+Dismiss it, or hide it for good, from its last line;
+*"show the issue welcome again"* or `/magpie-setup:welcome-guide issue` brings it back.
 
 ### Before the first run
 

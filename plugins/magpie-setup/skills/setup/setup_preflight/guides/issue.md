@@ -9,13 +9,15 @@ A one-minute tour, then straight back to what you asked for.
 
 1. 🏷️ **Triage** incoming issues and draft tracker replies — *"triage the open issues"*
 2. 🔁 **Deduplicate** related reports and propose which to keep — *"find duplicate issues"*
-3. 🧪 **Reproduce** a bug, then **reassess** its evidence — *"reproduce issue ABC-123"*
-4. 🛠️ **Draft a fix** with tests and a hand-back — *"draft a fix for ABC-123"*
-5. 🧹 **Sweep stale issues** and review proposed actions — *"find stale issues"*
-6. 📊 **Report** backlog and reassessment statistics — *"show backlog statistics"*
+3. 🧪 **Reproduce** a reported bug from its code — *"reproduce issue ABC-123"*
+4. 🔍 **Reassess** resolved or end-of-life issues against today's code — *"re-assess old issues"*
+5. 🛠️ **Draft a fix** with tests and a hand-back — *"draft a fix for ABC-123"*
+6. 🧹 **Sweep stale issues** and review proposed actions — *"find stale issues"*
+7. 📊 **Report** backlog and reassessment statistics — *"show backlog statistics"*
 
 `reassess-stats` reports on reassessment results; `backlog-stats` reports on the backlog.
-Tracker comments and issue closures require confirmation. Stale closures need a second confirmation.
+Tracker comments and issue closures require confirmation.
+Stale closures need a second confirmation.
 The fix workflow opens a draft PR only with `--draft-pr` and explicit approval.
 
 ## ⚙️ Configure it
