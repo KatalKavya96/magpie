@@ -45,6 +45,8 @@ behaviour and can be evolved without editing the skill body.
 
 ## Install & first runs
 
+New to this family? Read the [Mentoring welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/mentoring.md) for its workflow, configuration, and example requests.
+
 Install just this family — one plugin, 4 skills. Newcomer-facing mentoring — welcome, explain, and curate first issues.
 
 Once you have [added the marketplace](../setup/marketplace-install.md):
