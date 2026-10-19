@@ -87,6 +87,32 @@ def test_the_utilities_family_guide_comes_on_the_next_run(project: Path, version
     assert due(project, "list-skills") == [("general", "again")]
 
 
+def test_the_mentoring_family_guide_comes_on_the_next_run(project: Path, version) -> None:
+    for skill in (
+        "welcome",
+        "good-first-issue-sweep",
+        "good-first-issue-author",
+        "newcomer-issue-explainer",
+    ):
+        assert welcome.family_of(skill) == "mentoring"
+
+    assert due(project, "welcome") == [("general", "first-run")]
+    welcome.record(project, "general", "seen")
+    assert due(project, "welcome") == [("mentoring", "first-run")]
+    welcome.record(project, "mentoring", "seen")
+    assert due(project, "welcome") == [("general", "again")]
+
+
+def test_the_pairing_family_guide_comes_on_the_next_run(project: Path, version) -> None:
+    assert welcome.family_of("self-review") == "pairing"
+    assert welcome.family_of("multi-agent-review") == "pairing"
+    assert due(project, "self-review") == [("general", "first-run")]
+    welcome.record(project, "general", "seen")
+    assert due(project, "self-review") == [("pairing", "first-run")]
+    welcome.record(project, "pairing", "seen")
+    assert due(project, "self-review") == [("general", "again")]
+
+
 def test_the_issue_family_guide_comes_on_the_next_run(project: Path, version) -> None:
     for skill in (
         "backlog-stats",
@@ -407,11 +433,11 @@ def test_show_without_color_prints_the_markdown(capsys) -> None:
 
 def test_the_rules_section_and_both_guides_ship() -> None:
     assert welcome.SECTION in sections.available()
-    assert {"general", "security", "utilities", "issue"} <= set(welcome.guides())
+    assert {"general", "security", "utilities", "mentoring", "pairing", "issue"} <= set(welcome.guides())
     assert welcome.family_guides() == [g for g in welcome.guides() if g != "general"]
 
 
-@pytest.mark.parametrize("name", ["general", "security", "utilities", "issue"])
+@pytest.mark.parametrize("name", ["general", "security", "utilities", "mentoring", "pairing", "issue"])
 def test_each_guide_is_short_and_ends_with_the_way_back(name: str) -> None:
     text = welcome.guide(name) or ""
     assert not text.startswith("<!--")
@@ -433,8 +459,10 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
     security = welcome.guide("security") or ""
     general = welcome.guide("general") or ""
     utilities = welcome.guide("utilities") or ""
+    mentoring = welcome.guide("mentoring") or ""
+    pairing = welcome.guide("pairing") or ""
     issue = welcome.guide("issue") or ""
-    for text in (security, general, utilities, issue):
+    for text in (security, general, utilities, mentoring, pairing, issue):
         assert "{{" not in text
         assert "welcome footer: generated" not in text
     assert "`/magpie-setup:welcome-guide security`" in security
@@ -443,6 +471,10 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
     assert "--family general --color=always" in general
     assert "`/magpie-setup:welcome-guide utilities`" in utilities
     assert "--family utilities --color=always" in utilities
+    assert "`/magpie-setup:welcome-guide mentoring`" in mentoring
+    assert "--family mentoring --color=always" in mentoring
+    assert "`/magpie-setup:welcome-guide pairing`" in pairing
+    assert "--family pairing --color=always" in pairing
     assert "`/magpie-setup:welcome-guide issue`" in issue
     assert "--family issue --color=always" in issue
 
