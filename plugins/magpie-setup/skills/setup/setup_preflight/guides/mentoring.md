@@ -36,7 +36,7 @@ Talk to Magpie in plain language:
 - *"explain issue 123 with the files to read and what done looks like"*
 
 Security-sensitive threads are not suitable for these newcomer workflows.
-Existing contributor welcomes and previously handled threads are skipped as appropriate.
+Contributors who were already welcomed, and threads already handled, are skipped.
 
 ## 🎨 Make it yours
 
