@@ -18,9 +18,8 @@ Nothing is required before your first review:
 
 - 📖 **Project context** — optionally use `project.md` for project-scoped references; otherwise the skills use their defaults
 - 🎯 **Review scope** — choose a base ref, staged changes, or a path filter when needed
-- 🛠️ **Adversarial reviewers** — `adversarial-review.md` configures optional reviewer backends for related PR workflows; it is not required for pairing's three independent review passes
 
-Install for yourself with `/magpie-setup:setup config`.
+Configure it for yourself with `/magpie-setup:setup config`.
 Adopting shared configuration with `/magpie-setup:setup adopt` is a project maintainer decision.
 
 ## 💬 Just ask
