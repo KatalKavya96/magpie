@@ -11,7 +11,7 @@ Behavioral eval harness for Apache Magpie skills. Each eval suite tests a skill 
 
 Suites are currently implemented for:
 
-- **setup** — 131 cases across 30 steps (step-verify-drift, step-overrides-surface, step-override-bypass, step-m3-baseline-pick, step-m4-install-gates, step-m5-no-repo-offer, step-m5-companion-offer, step-upgrade-companion-offer, step-adopt-settings-merge, verify-default-set, uninstall-default-set, lock-marketplace-parse, adopt-write-floor, setup-prefill-from-floor, preflight-floor, upgrade-adoption-split, verify-floor, adopt-review-process, adopt-security-list, step-reconcile, step-verify, step-config-stamp, step-config-adversarial, step-config-mail, step-adopt-stamp, step-upgrade-stamp, step-delegate-propose, config-vcs-backend, config-local-custom-parser)
+- **setup** — 132 cases across 30 steps (step-verify-drift, step-overrides-surface, step-override-bypass, step-m3-baseline-pick, step-m4-install-gates, step-m5-no-repo-offer, step-m5-companion-offer, step-upgrade-companion-offer, step-adopt-settings-merge, verify-default-set, uninstall-default-set, lock-marketplace-parse, adopt-write-floor, setup-prefill-from-floor, preflight-floor, upgrade-adoption-split, verify-floor, adopt-review-process, adopt-security-list, step-reconcile, step-verify, step-config-stamp, step-config-adversarial, step-config-mail, step-adopt-stamp, step-upgrade-stamp, step-delegate-propose, config-vcs-backend, config-local-custom-parser)
 - **setup-isolated-setup-install** — 19 cases across 5 steps (runtime-routing, step-snapshot-drift, step-scope-confirm, step-hardware-key, step-roborev-exclusion)
 - **setup-privacy-llm** — 6 cases across 2 steps (step-1-resolve, step-4-gate)
 - **setup-shared-config-sync** — 12 cases across 2 steps (step-3-decide-action, step-5-draft-commit)
@@ -21,8 +21,8 @@ Suites are currently implemented for:
 - **security-issue-triage** — 19 cases across 6 steps (2, 2.5, 2.6, 3, 4, 6); Steps 1, 5 and 7 and the Step 6 bare-name scrub are decided and pytest-tested in `tools/security-management`
 - **security-issue-deduplicate** — 3 cases across 1 step (3, the merge inputs); Steps 1, 2, 3 (the merged body), 4, 5 and 6 are decided and pytest-tested in `tools/security-management`
 - **security-cve-allocate** — 3 cases across 1 step (4, the reporter draft); Steps 1, 2, 3, 4 (proposal and rollup), 5 and 7 are decided and pytest-tested in `tools/security-management`
-- **security-issue-sync**: 86 cases across 15 steps (1d, 1f, 2a, 2b, 2c, 3, 5b, 6, bulk-orchestration, bulk-selectors, draft-backend, ghsa-access-tier, guardrails, handoff-delegate, security-cc)
-- **security-issue-fix** — 50 cases across 15 steps (2, 3, 5a–5g, 6, 7, 11, and the flow choice plus Subversion steps 8 and 9)
+- **security-issue-sync**: 38 cases across 7 steps (1d, 1f, 2a, 2b, 2c, 5b judged gates, handoff-delegate); bulk selection and pre-flight, the buckets, Steps 3 and 6, the Guardrails check, the security CC, the drafting backend, the GHSA tier and the Step 5b flow are decided and pytest-tested in `tools/security-management`
+- **security-issue-fix** — 31 cases across 8 steps (2, 3, 5b, 5d, 5g, 7, and Subversion steps 8 and 9); the flow choice, 5a, 5c, 5e, 5f, 6 and 11 are decided and pytest-tested in `tools/security-management`
 - **security-issue-invalidate** — 7 cases across 2 steps (3, 4); Steps 2, 5a, 5b, 5d, 5e, 5f and 7 are decided and pytest-tested in `tools/security-management`
 - **security-issue-import-from-md** — 7 cases across 4 steps (1, 2, 4, 6); the Step 1 parser and Step 2 keyword clean are pytest-tested in `tools/security-management`
 - **security-issue-import-from-pr** — 8 cases across 3 steps (3, 6, 8); Step 2 is decided and pytest-tested in `tools/security-management`
