@@ -54,8 +54,6 @@ happens, no comment is posted, and the working tree is never mutated.
 
 ## Install & first runs
 
-First time using these skills? See the [Pairing welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/pairing.md) for a one-minute tour of the review workflow and example requests.
-
 Install just this family — one plugin, 2 skills. Review your own change before anyone else has to.
 
 Once you have [added the marketplace](../setup/marketplace-install.md):
@@ -67,6 +65,12 @@ Once you have [added the marketplace](../setup/marketplace-install.md):
 New to Magpie? The [quick start](../quick-start.md) walks the whole path in
 one place — install, the first `/magpie-setup:setup` run, and a recording of it
 happening — plus the other agents and the secure-isolation setup to run next.
+
+The first pairing skill you run opens with a one-minute
+[welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/pairing.md):
+the typical flow, what needs configuring, what to ask it, and how to make it yours.
+Dismiss it, or hide it for good, from its last line;
+*"show the pairing welcome again"* or `/magpie-setup:welcome-guide pairing` brings it back.
 
 ### Before the first run
 
