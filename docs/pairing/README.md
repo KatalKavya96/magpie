@@ -54,6 +54,8 @@ happens, no comment is posted, and the working tree is never mutated.
 
 ## Install & first runs
 
+First time using these skills? See the [Pairing welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/pairing.md) for a one-minute tour of the review workflow and example requests.
+
 Install just this family — one plugin, 2 skills. Review your own change before anyone else has to.
 
 Once you have [added the marketplace](../setup/marketplace-install.md):
