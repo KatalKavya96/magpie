@@ -70,6 +70,8 @@ read-only reporting:
 
 ## Install & first runs
 
+New to issue management? See the [Issue Management welcome guide](../../plugins/magpie-setup/skills/setup/setup_preflight/guides/issue.md) for the workflow, configuration, and first requests.
+
 Install just this family — one plugin, 8 skills. General-issue lifecycle: triage, reproduction, dedup, backlog.
 
 Once you have [added the marketplace](../setup/marketplace-install.md):
