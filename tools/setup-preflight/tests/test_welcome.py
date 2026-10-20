@@ -34,7 +34,7 @@ from .conftest import personal, write_stamp
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SECURITY_SKILL = "issue-sync"
-OTHER_SKILL = "ci-runner-audit"
+OTHER_SKILL = "rc-cut"
 
 
 def stamp(root: Path) -> dict:
@@ -165,6 +165,25 @@ def test_the_contributor_growth_family_guide_comes_on_the_next_run(project: Path
     assert due(project, "activity-sweep") == [("general", "again")]
 
 
+def test_the_repo_health_family_guide_comes_on_the_next_run(project: Path, version) -> None:
+    for skill in (
+        "audit-finding-fix",
+        "ci-runner-audit",
+        "dependency-audit",
+        "dependency-license-audit",
+        "flaky-test-triage",
+        "license-compliance-audit",
+        "workflow-security-audit",
+    ):
+        assert welcome.family_of(skill) == "repo-health"
+
+    assert due(project, "ci-runner-audit") == [("general", "first-run")]
+    welcome.record(project, "general", "seen")
+    assert due(project, "ci-runner-audit") == [("repo-health", "first-run")]
+    welcome.record(project, "repo-health", "seen")
+    assert due(project, "ci-runner-audit") == [("general", "again")]
+
+
 def test_at_most_one_guide_per_run(project: Path, version) -> None:
     for _ in range(8):
         found = welcome_findings(project, SECURITY_SKILL)
@@ -188,7 +207,7 @@ def test_a_hidden_general_guide_does_not_hold_back_the_family_one(project: Path,
 
 
 def test_a_skill_of_a_family_without_a_guide_gets_only_the_general_one(project: Path, version) -> None:
-    assert welcome.family_of(OTHER_SKILL) == "repo-health"
+    assert welcome.family_of(OTHER_SKILL) == "release-management"
     assert due(project, OTHER_SKILL) == [("general", "first-run")]
     welcome.record(project, "general", "never")
     assert due(project, OTHER_SKILL) == []
@@ -471,6 +490,7 @@ def test_the_rules_section_and_all_guides_ship() -> None:
         "issue",
         "pr-management",
         "contributor-growth",
+        "repo-health",
     } <= set(welcome.guides())
     assert welcome.family_guides() == [g for g in welcome.guides() if g != "general"]
 
@@ -486,6 +506,7 @@ def test_the_rules_section_and_all_guides_ship() -> None:
         "issue",
         "pr-management",
         "contributor-growth",
+        "repo-health",
     ],
 )
 def test_each_guide_is_short_and_ends_with_the_way_back(name: str) -> None:
@@ -514,7 +535,18 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
     issue = welcome.guide("issue") or ""
     pr_management = welcome.guide("pr-management") or ""
     contributor_growth = welcome.guide("contributor-growth") or ""
-    for text in (security, general, utilities, mentoring, pairing, issue, pr_management, contributor_growth):
+    repo_health = welcome.guide("repo-health") or ""
+    for text in (
+        security,
+        general,
+        utilities,
+        mentoring,
+        pairing,
+        issue,
+        pr_management,
+        contributor_growth,
+        repo_health,
+    ):
         assert "{{" not in text
         assert "welcome footer: generated" not in text
     assert "`/magpie-setup:welcome-guide security`" in security
@@ -533,6 +565,8 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
     assert "--family pr-management --color=always" in pr_management
     assert "`/magpie-setup:welcome-guide contributor-growth`" in contributor_growth
     assert "--family contributor-growth --color=always" in contributor_growth
+    assert "`/magpie-setup:welcome-guide repo-health`" in repo_health
+    assert "--family repo-health --color=always" in repo_health
 
 
 def test_list_prints_every_guide(capsys) -> None:
