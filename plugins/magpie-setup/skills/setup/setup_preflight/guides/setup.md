@@ -11,14 +11,13 @@ A one-minute tour, then straight back to what you asked for.
 2. 🛠️ **Install and configure** — *"set up Magpie for me"*
 3. 🔐 **Isolate the agent** — *"install the secure agent sandbox"*
 4. ✅ **Verify and diagnose** — *"verify isolation"* or *"diagnose my sandbox"*
-5. 🔄 **Maintain and upgrade** — *"update isolation"* or *"upgrade Magpie"*
+5. 🆙 **Check for drift and upgrade** — *"check my sandbox for drift"* or *"upgrade Magpie"*
 6. 🏗️ **Adopt for the team** — *"adopt Magpie for this repository"*
 
-Other skills help configure LLM privacy, synchronize shared config, upstream
-useful overrides, propose framework bug fixes, and replay welcome guides.
+Other skills help configure LLM privacy, synchronize shared config, upstream useful overrides, propose framework bug fixes, and replay welcome guides.
 
-Read-only checks report findings. Installation, adoption, upgrades,
-configuration writes, and repository changes follow their own approval steps.
+Read-only checks report findings.
+Installation, adoption, upgrades, configuration writes, and repository changes follow their own approval steps.
 Never edit Magpie's gitignored, read-only framework snapshot directly.
 
 ## ⚙️ Configure it
@@ -52,7 +51,7 @@ Describe how your setup should behave:
 - *"use our approved skill sources"*
 - *"keep my personal privacy rules separate from project policy"*
 
-Review proposed overrides and changes before applying them.
-A reusable improvement can be prepared as an upstream contribution for review.
+Magpie records each request as an override of the setup skill it touches.
+If other projects would want it too, say *"upstream this change to Magpie"* and review the generic `apache/magpie` PR it prepares.
 
 <!-- welcome footer: generated from guides/_footer.md -->
