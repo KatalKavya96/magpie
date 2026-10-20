@@ -184,6 +184,29 @@ def test_the_repo_health_family_guide_comes_on_the_next_run(project: Path, versi
     assert due(project, "ci-runner-audit") == [("general", "again")]
 
 
+def test_the_setup_family_guide_comes_on_the_next_run(project: Path, version) -> None:
+    for skill in (
+        "isolated-setup-doctor",
+        "isolated-setup-install",
+        "isolated-setup-update",
+        "isolated-setup-verify",
+        "override-upstream",
+        "privacy-llm",
+        "setup",
+        "shared-config-sync",
+        "status",
+        "upstream-fix",
+        "welcome-guide",
+    ):
+        assert welcome.family_of(skill) == "setup"
+
+    assert due(project, "status") == [("general", "first-run")]
+    welcome.record(project, "general", "seen")
+    assert due(project, "status") == [("setup", "first-run")]
+    welcome.record(project, "setup", "seen")
+    assert due(project, "status") == [("general", "again")]
+
+
 def test_at_most_one_guide_per_run(project: Path, version) -> None:
     for _ in range(8):
         found = welcome_findings(project, SECURITY_SKILL)
@@ -491,6 +514,7 @@ def test_the_rules_section_and_all_guides_ship() -> None:
         "pr-management",
         "contributor-growth",
         "repo-health",
+        "setup",
     } <= set(welcome.guides())
     assert welcome.family_guides() == [g for g in welcome.guides() if g != "general"]
 
@@ -507,6 +531,7 @@ def test_the_rules_section_and_all_guides_ship() -> None:
         "pr-management",
         "contributor-growth",
         "repo-health",
+        "setup",
     ],
 )
 def test_each_guide_is_short_and_ends_with_the_way_back(name: str) -> None:
@@ -536,6 +561,7 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
     pr_management = welcome.guide("pr-management") or ""
     contributor_growth = welcome.guide("contributor-growth") or ""
     repo_health = welcome.guide("repo-health") or ""
+    setup = welcome.guide("setup") or ""
     for text in (
         security,
         general,
@@ -546,6 +572,7 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
         pr_management,
         contributor_growth,
         repo_health,
+        setup,
     ):
         assert "{{" not in text
         assert "welcome footer: generated" not in text
@@ -567,6 +594,8 @@ def test_the_footer_is_shared_and_filled_in_per_guide() -> None:
     assert "--family contributor-growth --color=always" in contributor_growth
     assert "`/magpie-setup:welcome-guide repo-health`" in repo_health
     assert "--family repo-health --color=always" in repo_health
+    assert "`/magpie-setup:welcome-guide setup`" in setup
+    assert "--family setup --color=always" in setup
 
 
 def test_list_prints_every_guide(capsys) -> None:
