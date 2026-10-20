@@ -28,8 +28,9 @@ Release skills use project-specific configuration:
 - ⚙️ **Release policy** — `release-management-config.md` for planning, votes, announcements, archives, audit reports and KEYS
 - 📦 **Build and staging** — `release-build.md` for `rc-cut` and `verify-rc`
 - 🗳️ **Approval roster** — `pmc-roster.md` for `vote-tally` and `promote`
+- 🚆 **Release trains** — `release-trains.md` for `prepare` and `archive-sweep`
 
-Choose the appropriate distribution, approval and announcement backends.
+The distribution, approval and announcement backends are set in `release-management-config.md`.
 Configure personally with `/magpie-setup:setup config`.
 Team adoption with `/magpie-setup:setup adopt` is a maintainer decision.
 
@@ -49,8 +50,8 @@ Talk to Magpie in plain language:
 
 Describe your release policy and preferred backend:
 
-- *"use our project's configured release distribution backend"*
-- *"use the approval mechanism and vote window in our release policy"*
+- *"use a 96-hour vote window instead of 72"*
+- *"always run the KEYS check before cutting an RC"*
 
 Review proposed configuration or override changes before applying them.
 Useful elsewhere? Ask *"upstream this change to Magpie"* to prepare a contribution for review.
